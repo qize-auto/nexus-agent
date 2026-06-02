@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusAgent Chat</title>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --border: #30363d;
+  --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+  --accent-hover: #79b8ff; --success: #3fb950; --warning: #d29922; --danger: #f85149;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); }
+#app { display:flex; flex-direction:column; height:100vh; }
+header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+header h1 { font-size:16px; font-weight:600; }
+.badge { padding:2px 8px; border-radius:12px; font-size:12px; font-weight:500; }
+.badge.idle { background:rgba(88,166,255,0.15); color:var(--accent); }
+.badge.thinking { background:rgba(210,153,34,0.15); color:var(--warning); animation:pulse 1.5s infinite; }
+.badge.error { background:rgba(248,81,73,0.15); color:var(--danger); }
+@keyframes pulse { 0%{opacity:1} 50%{opacity:.5} 100%{opacity:1} }
+main { flex:1; overflow-y:auto; padding:16px; }
+#chat-history { display:flex; flex-direction:column; gap:10px; max-width:800px; margin:0 auto; }
+.msg { max-width:85%; padding:10px 14px; border-radius:10px; font-size:13.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+.msg.user { align-self:flex-end; background:var(--accent); color:#fff; }
+.msg.agent { align-self:flex-start; background:var(--surface); border:1px solid var(--border); }
+.msg.system { align-self:center; font-size:11px; color:var(--text-muted); background:var(--surface); border:1px dashed var(--border); opacity:.8; }
+.msg.error { align-self:flex-start; background:rgba(248,81,73,0.1); border:1px solid var(--danger); color:var(--danger); }
+.msg pre { background:var(--bg); padding:8px; border-radius:6px; overflow-x:auto; margin:6px 0; font-size:12px; border:1px solid var(--border); }
+.msg code { font-family:'Cascadia Code',monospace; font-size:12px; }
+footer { display:flex; gap:8px; padding:10px 14px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+#input-box { flex:1; resize:none; min-height:44px; max-height:120px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:13px; outline:none; font-family:inherit; }
+#input-box:focus { border-color:var(--accent); }
+#input-box::placeholder { color:var(--text-muted); }
+#send-btn { padding:0 18px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+#send-btn:hover { background:var(--accent-hover); }
+#send-btn:disabled { opacity:.4; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>🜁 NexusAgent <span style="font-size:11px;color:var(--text-muted);font-weight:400">v3.3</span></h1>
+  <span id="status-badge" class="badge idle">就绪</span>
+</header>
+<main><div id="chat-history"><div class="msg system">NexusAgent v3.3 就绪。输入任务开始对话。</div></div></main>
+<footer>
+  <textarea id="input-box" placeholder="输入指令… (Enter 发送)" rows="1"></textarea>
+  <button id="send-btn">发送</button>
+</footer>
+</div>
+
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+window.onerror=function(msg,url,line){
+  append('system','🔧 检测到UI错误，Agent正在自检修复…');
+  if(bridge) bridge.reportError(msg,url,String(line));
+  return false;
+};
+let bridge=null,isProcessing=false;
+new QWebChannel(qt.webChannelTransport,function(ch){bridge=ch.objects.agentBridge});
+
+const h=document.getElementById('chat-history'),i=document.getElementById('input-box'),
+      b=document.getElementById('send-btn'),s=document.getElementById('status-badge');
+
+function send(){
+  const t=i.value.trim(); if(!t||isProcessing||!bridge)return;
+  append('user',t); i.value=''; isProcessing=true; b.disabled=true; setStatus('thinking','思考中…');
+  bridge.sendMessage(t, function(result){
+    try{const r=JSON.parse(result);if(!r.ok){append('error',r.error);setStatus('error','出错');isProcessing=false;b.disabled=false}}
+    catch(e){append('error',e.message);setStatus('error','出错');isProcessing=false;b.disabled=false}
+  });
+}
+function appendAgentMessage(md){append('agent',md);setStatus('idle','就绪');isProcessing=false;b.disabled=false}
+function appendError(e){append('error',e);setStatus('error','出错');isProcessing=false;b.disabled=false}
+function setStatus(type,label){s.textContent=label;s.className='badge '+type}
+function showToast(m){}
+function append(role,text){
+  const d=document.createElement('div'); d.className='msg '+role;
+  let html=escapeHtml(text);
+  html=html.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
+  html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
+  html=html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  html=html.replace(/\n/g,'<br>');
+  d.innerHTML=html; h.appendChild(d); h.parentElement.scrollTop=h.parentElement.scrollHeight
+}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+b.addEventListener('click',send);
+i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+</script>
+</body>
+</html>

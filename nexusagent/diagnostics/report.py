@@ -1,0 +1,129 @@
+"""
+NexusAgent Diagnostic Report — 诊断报告 Markdown 生成
+
+Usage:
+    from nexusagent.diagnostics.report import generate_report
+    from nexusagent.diagnostics.persistence import DiagnosticStore
+    store = DiagnosticStore()
+    md = generate_report(store)
+"""
+
+from __future__ import annotations
+
+import time
+from typing import Any, Dict, Optional
+
+
+def _fmt_time(ts: float) -> str:
+    from datetime import datetime
+    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def generate_report(store: Any) -> str:
+    """生成 Markdown 诊断报告"""
+    lines: list[str] = []
+
+    lines.append("# NexusAgent Diagnostic Report")
+    lines.append("")
+    lines.append(f"**Generated at:** {_fmt_time(time.time())}")
+    lines.append("")
+
+    # ── Health ──
+    health_points = store.get_history("health", hours=1) if store else []
+    latest_health = health_points[-1]["data"] if health_points else {}
+    lines.append("## Health Summary")
+    lines.append("")
+    overall = latest_health.get("overall_healthy", "unknown")
+    lines.append(f"- **Overall:** {'✅ Healthy' if overall is True else '❌ Issues' if overall is False else '❓ Unknown'}")
+    metrics = latest_health.get("metrics", {})
+    lines.append(f"- **Active Sessions:** {metrics.get('active_sessions', 0)}")
+    lines.append(f"- **Avg Latency:** {metrics.get('avg_latency_ms', 0):.1f} ms")
+    lines.append(f"- **Requests (1h):** {metrics.get('requests_success', 0)} success / {metrics.get('requests_error', 0)} error")
+    lines.append("")
+
+    # ── Connectivity ──
+    conn_points = store.get_history("connectivity", hours=1) if store else []
+    latest_conn = conn_points[-1]["data"] if conn_points else {}
+    lines.append("## Connectivity")
+    lines.append("")
+    healthy = latest_conn.get("healthy", 0)
+    total = latest_conn.get("total", 0)
+    pct = round((healthy / total) * 100) if total else 0
+    lines.append(f"- **Healthy:** {healthy}/{total} ({pct}%)")
+    probes = latest_conn.get("probes", {})
+    if probes:
+        lines.append("")
+        lines.append("| Probe | Status | Detail |")
+        lines.append("|-------|--------|--------|")
+        for name, info in probes.items():
+            status = "✅ OK" if info.get("status") == "ok" else "❌ Fail"
+            detail = info.get("latency_ms", info.get("error", "-"))
+            lines.append(f"| {name} | {status} | {detail} |")
+    lines.append("")
+
+    # ── Modules ──
+    mod_points = store.get_history("modules", hours=1) if store else []
+    latest_mod = mod_points[-1]["data"] if mod_points else {}
+    lines.append("## Modules")
+    lines.append("")
+    healthy = latest_mod.get("healthy", 0)
+    total = latest_mod.get("total", 0)
+    pct = round((healthy / total) * 100) if total else 0
+    lines.append(f"- **Healthy:** {healthy}/{total} ({pct}%)")
+    modules = latest_mod.get("modules", [])
+    if modules:
+        lines.append("")
+        lines.append("| Module | Status |")
+        lines.append("|--------|--------|")
+        for m in modules:
+            status = "✅ OK" if m.get("status") == "ok" else "❌ Fail"
+            lines.append(f"| {m.get('name', '?')} | {status} |")
+    lines.append("")
+
+    # ── Alert Summary ──
+    alerts = store.get_alerts(hours=24, limit=100) if store else []
+    lines.append("## Alert Summary (24h)")
+    lines.append("")
+    if alerts:
+        counts: Dict[str, int] = {}
+        for a in alerts:
+            counts[a["level"]] = counts.get(a["level"], 0) + 1
+        for level, cnt in sorted(counts.items()):
+            lines.append(f"- **{level.capitalize()}:** {cnt}")
+        lines.append("")
+        lines.append("| Time | Level | Source | Title |")
+        lines.append("|------|-------|--------|-------|")
+        for a in alerts[:20]:
+            ts = _fmt_time(a["timestamp"])
+            lines.append(f"| {ts} | {a['level']} | {a['source']} | {a['title']} |")
+    else:
+        lines.append("No alerts in the last 24 hours.")
+    lines.append("")
+
+    # ── History Trend (24h) ──
+    lines.append("## History Trend (24h)")
+    lines.append("")
+    for category in ("health", "connectivity", "modules"):
+        pts = store.get_history(category, hours=24) if store else []
+        if pts:
+            lines.append(f"### {category.capitalize()}")
+            lines.append("")
+            lines.append("| Time | Value |")
+            lines.append("|------|-------|")
+            for p in pts[-10:]:
+                ts = _fmt_time(p["timestamp"])
+                val = "N/A"
+                data = p.get("data", {})
+                if category == "health":
+                    val = "Healthy" if data.get("overall_healthy") else "Issues"
+                elif category in ("connectivity", "modules"):
+                    t = data.get("total", 1)
+                    h = data.get("healthy", 0)
+                    val = f"{h}/{t} ({round((h/t)*100) if t else 0}%)"
+                lines.append(f"| {ts} | {val} |")
+            lines.append("")
+
+    lines.append("---")
+    lines.append("*Report generated by NexusAgent Diagnostic System*")
+    lines.append("")
+    return "\n".join(lines)

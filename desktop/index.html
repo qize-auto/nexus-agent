@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8080; img-src 'self' data:;">
+<title>NexusAgent</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- 左侧边栏 -->
+  <aside id="sidebar" class="expanded">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-icon">◈</div>
+        <span class="brand-text">NexusAgent</span>
+      </div>
+      <button id="btn-new-chat" class="btn-new-chat" title="新建对话">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>新对话</span>
+      </button>
+    </div>
+    <div id="session-list" class="session-list"></div>
+    <div class="sidebar-footer">
+      <button id="btn-diagnostics" class="btn-footer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        <span>Diagnostics</span>
+      </button>
+      <button id="btn-settings" class="btn-footer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 21 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>设置</span>
+      </button>
+      <div class="theme-toggle" id="btn-theme" title="切换主题">
+        <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main id="main-area">
+    <!-- 顶部栏 -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <button id="btn-toggle-sidebar" class="btn-icon" title="收起/展开边栏">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <div class="model-info">
+          <span class="model-name" id="current-model">moonshot-v1-8k</span>
+          <span class="status-dot online" id="status-dot"></span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button id="btn-clear-chat" class="btn-icon" title="清空当前对话">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 消息区域 -->
+    <div id="messages" class="messages">
+      <div class="welcome-screen">
+        <div class="welcome-logo">◈</div>
+        <h1 class="welcome-title">NexusAgent</h1>
+        <p class="welcome-subtitle">本地优先的个人智能体系统</p>
+        <div class="welcome-cards">
+          <div class="welcome-card">
+            <div class="card-icon">💡</div>
+            <div class="card-title">智能问答</div>
+            <div class="card-desc">基于大模型的自然语言理解与生成</div>
+          </div>
+          <div class="welcome-card">
+            <div class="card-icon">🛡️</div>
+            <div class="card-title">隐私保护</div>
+            <div class="card-desc">数据本地存储，PII 自动脱敏</div>
+          </div>
+          <div class="welcome-card">
+            <div class="card-icon">⚡</div>
+            <div class="card-title">工具调用</div>
+            <div class="card-desc">代码执行、文件分析、网络请求</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div id="input-area" class="input-area">
+      <div class="input-container">
+        <textarea
+          id="message-input"
+          placeholder="发送消息给 NexusAgent…"
+          rows="1"
+          maxlength="50000"
+        ></textarea>
+        <button id="btn-send" class="btn-send" title="发送" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        <span id="char-count">0 / 50000</span>
+        <span class="hint">Enter 发送 · Shift+Enter 换行</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 设置抽屉 -->
+  <div id="settings-drawer" class="drawer hidden">
+    <div class="drawer-backdrop"></div>
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3>设置</h3>
+        <button id="btn-close-drawer" class="btn-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="drawer-body">
+        <section class="drawer-section">
+          <h4>模型提供商</h4>
+          <select id="setting-provider">
+            <option value="moonshot">Moonshot (月之暗面)</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </section>
+        <section class="drawer-section">
+          <h4>模型</h4>
+          <select id="setting-model">
+            <option value="moonshot-v1-8k">moonshot-v1-8k</option>
+            <option value="moonshot-v1-32k">moonshot-v1-32k</option>
+            <option value="moonshot-v1-128k">moonshot-v1-128k</option>
+          </select>
+        </section>
+        <section class="drawer-section">
+          <h4>API Key</h4>
+          <div class="apikey-input-wrap">
+            <input type="password" id="setting-apikey" placeholder="sk-..." autocomplete="off">
+            <button id="btn-toggle-key" class="btn-icon-sm" title="显示/隐藏">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          <p class="field-hint">留空则使用 .env 文件中的配置</p>
+        </section>
+        <section class="drawer-section">
+          <h4>界面</h4>
+          <div class="drawer-row">
+            <span>主题</span>
+            <select id="setting-theme">
+              <option value="dark">深色</option>
+              <option value="light">浅色</option>
+              <option value="system">跟随系统</option>
+            </select>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>安全状态</h4>
+          <div class="security-badges">
+            <span class="sec-badge ok">AES-256</span>
+            <span class="sec-badge ok">输入消毒</span>
+            <span class="sec-badge ok">PII 脱敏</span>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>Diagnostics</h4>
+          <div class="diag-config-grid">
+            <div class="diag-config-row">
+              <label>Scheduler Interval (s)</label>
+              <input type="number" id="diag-cfg-interval" value="300" min="10" step="10">
+            </div>
+            <div class="diag-config-row">
+              <label>Latency Warning (ms)</label>
+              <input type="number" id="diag-cfg-latency-warn" value="5000" min="100" step="100">
+            </div>
+            <div class="diag-config-row">
+              <label>Latency Critical (ms)</label>
+              <input type="number" id="diag-cfg-latency-crit" value="10000" min="100" step="100">
+            </div>
+            <div class="diag-config-row">
+              <label>Error Rate Warning (%)</label>
+              <input type="number" id="diag-cfg-err-warn" value="5" min="0" max="100" step="0.5">
+            </div>
+            <div class="diag-config-row">
+              <label>Error Rate Critical (%)</label>
+              <input type="number" id="diag-cfg-err-crit" value="10" min="0" max="100" step="0.5">
+            </div>
+            <div class="diag-config-row">
+              <label>History Keep (days)</label>
+              <input type="number" id="diag-cfg-history-days" value="30" min="1" step="1">
+            </div>
+            <div class="diag-config-row">
+              <label>Alerts Keep (days)</label>
+              <input type="number" id="diag-cfg-alerts-days" value="90" min="1" step="1">
+            </div>
+          </div>
+        </section>
+        <div class="drawer-actions">
+          <button id="btn-save-config" class="btn-primary">保存配置</button>
+        </div>
+        <p class="save-status" id="save-status"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnostics 抽屉 -->
+  <div id="diagnostics-drawer" class="drawer hidden">
+    <div class="drawer-backdrop"></div>
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3>Diagnostics</h3>
+        <div class="drawer-header-actions">
+          <label class="diag-autorefresh-label" title="Auto-refresh every 30s">
+            <input type="checkbox" id="diag-autorefresh-toggle" checked>
+            <span>Auto-refresh</span>
+          </label>
+          <button id="btn-close-diagnostics" class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="drawer-body">
+        <section class="drawer-section">
+          <h4>System Health</h4>
+          <div class="diag-cards">
+            <div class="diag-card" data-diag="health">
+              <div class="diag-icon">🏥</div>
+              <div class="diag-title">Health Dashboard</div>
+              <div class="diag-desc">Backend health, metrics, security status</div>
+              <button class="btn-diag-run">Run</button>
+            </div>
+            <div class="diag-card" data-diag="connectivity">
+              <div class="diag-icon">🔗</div>
+              <div class="diag-title">Connectivity Test</div>
+              <div class="diag-desc">Tool registry &amp; module import checks</div>
+              <button class="btn-diag-run">Run</button>
+            </div>
+            <div class="diag-card" data-diag="modules">
+              <div class="diag-icon">📦</div>
+              <div class="diag-title">Module Status</div>
+              <div class="diag-desc">Core module availability report</div>
+              <button class="btn-diag-run">Run</button>
+            </div>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>Analysis</h4>
+          <div class="diag-cards">
+            <div class="diag-card" data-diag="audit">
+              <div class="diag-icon">📋</div>
+              <div class="diag-title">Audit Viewer</div>
+              <div class="diag-desc">Security events &amp; execution traces</div>
+              <button class="btn-diag-run">Run</button>
+            </div>
+            <div class="diag-card" data-diag="ux">
+              <div class="diag-icon">✨</div>
+              <div class="diag-title">UX Advisor</div>
+              <div class="diag-desc">Configuration UX analysis</div>
+              <button class="btn-diag-run">Run</button>
+            </div>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>Compare</h4>
+          <div class="diag-forms">
+            <div class="diag-form" data-diag="design">
+              <div class="diag-form-title">🎨 Design Diff</div>
+              <textarea class="diag-input" id="diag-design-baseline" placeholder="Baseline design spec…" rows="3"></textarea>
+              <textarea class="diag-input" id="diag-design-current" placeholder="Current design spec…" rows="3"></textarea>
+              <button class="btn-diag-run" data-diag="design">Compare</button>
+            </div>
+            <div class="diag-form" data-diag="competitor">
+              <div class="diag-form-title">🏆 Competitor Analysis</div>
+              <input type="text" class="diag-input" id="diag-competitor-name" placeholder="Competitor name">
+              <textarea class="diag-input" id="diag-competitor-ours" placeholder="Our features (one per line)…" rows="3"></textarea>
+              <textarea class="diag-input" id="diag-competitor-theirs" placeholder="Competitor features (one per line)…" rows="3"></textarea>
+              <button class="btn-diag-run" data-diag="competitor">Analyze</button>
+            </div>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>Alerts</h4>
+          <div class="diag-history-controls">
+            <div class="diag-alert-filters">
+              <button class="diag-filter-btn active" data-alert-level="">All</button>
+              <button class="diag-filter-btn" data-alert-level="critical">Critical</button>
+              <button class="diag-filter-btn" data-alert-level="error">Error</button>
+              <button class="diag-filter-btn" data-alert-level="warning">Warning</button>
+              <button class="diag-filter-btn" data-alert-level="info">Info</button>
+            </div>
+            <select id="diag-alert-hours" class="diag-select">
+              <option value="1">1h</option>
+              <option value="6">6h</option>
+              <option value="24" selected>24h</option>
+              <option value="72">3d</option>
+            </select>
+            <button id="btn-load-alerts" class="btn-diag-run">Load</button>
+          </div>
+          <div id="diag-alerts-table" class="diag-history-table"></div>
+        </section>
+        <section class="drawer-section">
+          <h4>Export</h4>
+          <div class="diag-history-controls">
+            <select id="diag-export-format" class="diag-select">
+              <option value="markdown">Markdown</option>
+              <option value="json">JSON</option>
+            </select>
+            <button id="btn-export-report" class="btn-diag-run">Export</button>
+          </div>
+        </section>
+        <section class="drawer-section">
+          <h4>History</h4>
+          <div class="diag-history-controls">
+            <select id="diag-history-category" class="diag-select">
+              <option value="health">Health</option>
+              <option value="connectivity">Connectivity</option>
+              <option value="modules">Modules</option>
+              <option value="ux">UX</option>
+            </select>
+            <select id="diag-history-hours" class="diag-select">
+              <option value="1">1h</option>
+              <option value="6">6h</option>
+              <option value="24" selected>24h</option>
+              <option value="72">3d</option>
+            </select>
+            <button id="btn-load-history" class="btn-diag-run">Load</button>
+          </div>
+          <div id="diag-history-chart" class="diag-history-chart"></div>
+          <div id="diag-history-table" class="diag-history-table"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 加载动画 -->
+<div id="global-loader" class="global-loader hidden">
+  <div class="loader-spinner"></div>
+  <p>正在连接后端服务…</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

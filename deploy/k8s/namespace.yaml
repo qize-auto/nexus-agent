@@ -1,0 +1,8 @@
+# NexusAgent v4.0 — Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexus
+  labels:
+    app.kubernetes.io/name: nexusagent
+    app.kubernetes.io/version: "4.0"

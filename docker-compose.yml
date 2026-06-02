@@ -1,0 +1,67 @@
+# NexusAgent v4.0+ — Docker Compose 配置
+# 用法: docker-compose up -d
+
+version: "3.9"
+
+services:
+  nexusagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexusagent:latest
+    container_name: nexusagent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NEXUS_DEBUG=false
+      - NEXUS_HOME=/app/data
+    env_file:
+      - .env
+    volumes:
+      - nexusagent_data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - nexusagent_net
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # 可选: Redis 缓存与消息队列
+  redis:
+    image: redis:7-alpine
+    container_name: nexusagent_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - nexusagent_net
+
+  # 可选: 监控面板 (Prometheus + Grafana)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #   ports:
+  #     - "9090:9090"
+
+volumes:
+  nexusagent_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  nexusagent_net:
+    driver: bridge

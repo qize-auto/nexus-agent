@@ -1,0 +1,55 @@
+# NexusAgent v3.3 — Python依赖
+# 基于设计稿第1-13章完整规格
+
+# === 核心异步框架 ===
+aiohttp>=3.9.0
+aiofiles>=23.0
+aiosqlite>=0.19.0
+asyncio-throttle>=1.0
+
+# === 数据与存储 ===
+pydantic>=2.0
+sqlite-vec>=0.1.0  # 向量搜索扩展
+orjson>=3.9        # 高性能JSON
+
+# === 安全 ===
+cryptography>=41.0  # AES-256
+pyjwt>=2.8
+
+# === LLM集成 ===
+litellm>=1.30       # 统一LLM接口+安全集成
+openai>=1.0
+anthropic>=0.30
+
+# === MCP协议 ===
+mcp>=1.0
+
+# === 配置 ===
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# === 可观测性 ===
+structlog>=24.0
+opentelemetry-api>=1.20
+opentelemetry-sdk>=1.20
+
+# === 多渠道接入 (设计稿第3章) ===
+python-telegram-bot>=20.0
+discord.py>=2.0
+
+# === 分布式限流 ===
+redis>=5.0
+
+# === 开发与测试 ===
+pytest>=8.0
+pytest-asyncio>=0.23
+pytest-cov>=4.0
+
+# === 文档处理 ===
+python-docx>=1.1  # .docx读取
+
+# === 桌面客户端 (Windows/macOS/Linux) ===
+# 注：桌面客户端使用Electron+Node.js方案
+# Python后端仅需以下依赖用于桌面桥接模式
+PyQt6>=6.6; sys_platform != "darwin" or platform_machine != "arm64"
+PyQt6-WebEngine>=6.6; sys_platform != "darwin" or platform_machine != "arm64"

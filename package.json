@@ -1,0 +1,75 @@
+{
+  "name": "nexusagent-desktop",
+  "version": "3.3.0",
+  "description": "NexusAgent Desktop Client — 本地优先的个人智能体系统",
+  "main": "main.js",
+  "author": "NexusAgent Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NEXUS_DEBUG=1 electron .",
+    "build": "electron-builder --win portable",
+    "build:all": "electron-builder --win --mac --linux",
+    "dist": "npm run build"
+  },
+  "build": {
+    "appId": "com.nexusagent.desktop",
+    "productName": "NexusAgent",
+    "copyright": "Copyright © 2025 NexusAgent",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "run_web.py",
+      "run_cli.py",
+      "desktop/**",
+      "web_ui/**",
+      "nexusagent/**",
+      "requirements.txt",
+      ".env"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icons",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

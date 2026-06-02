@@ -1,0 +1,12 @@
+# NexusAgent v4.0 — ConfigMap（非敏感配置）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexus-config
+  namespace: nexus
+data:
+  NEXUS_MODE: "web"
+  NEXUS_HOST: "0.0.0.0"
+  NEXUS_PORT: "8080"
+  DEFAULT_PROVIDER: "deepseek"
+  DEFAULT_MODEL: "deepseek-chat"

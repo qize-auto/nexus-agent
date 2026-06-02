@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexusagent"
+version = "0.1.0"
+description = "A local-first AI Agent framework with anti-laziness execution guards and multi-strategy auto-orchestration."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+authors = [
+    {name = "NexusAgent Contributors"},
+]
+keywords = ["ai", "agent", "llm", "react", "swarm", "orchestration", "local-first"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.0",
+    "aiosqlite>=0.19.0",
+    "asyncio-throttle>=1.0",
+    "pydantic>=2.0",
+    "sqlite-vec>=0.1.0",
+    "orjson>=3.9",
+    "cryptography>=41.0",
+    "pyjwt>=2.8",
+    "litellm>=1.30",
+    "openai>=1.0",
+    "anthropic>=0.30",
+    "mcp>=1.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "structlog>=24.0",
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "python-telegram-bot>=20.0",
+    "discord.py>=2.0",
+    "redis>=5.0",
+    "python-docx>=1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.0",
+    "coverage>=7.0",
+    "black>=24.0",
+    "ruff>=0.4.0",
+    "mypy>=1.9",
+]
+web = [
+    "aiohttp>=3.9.0",
+]
+desktop = [
+    "PyQt6>=6.6",
+]
+
+[project.scripts]
+nexus = "nexusagent.cli.main:main"
+nexus-agent = "run_cli:main"
+
+[project.urls]
+# GitHub Repository
+Homepage = "https://github.com/qize-auto/nexus-agent"
+Documentation = "https://github.com/qize-auto/nexus-agent#readme"
+Repository = "https://github.com/qize-auto/nexus-agent"
+Issues = "https://github.com/qize-auto/nexus-agent/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nexusagent*"]
+exclude = ["tests*", "examples*", "docs*", "desktop*", "deploy*", "k8s*", "scripts*", "web_ui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+markers = [
+    "e2e: marks tests as end-to-end (requires API key)",
+]
+
+[tool.coverage.run]
+source = ["nexusagent"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

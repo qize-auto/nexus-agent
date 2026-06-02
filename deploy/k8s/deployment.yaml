@@ -1,0 +1,63 @@
+# NexusAgent v4.0 — Kubernetes Deployment
+# 参考: OpenHands K8s 设计 https://github.com/All-Hands-AI/OpenHands
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-web
+  namespace: nexus
+  labels:
+    app.kubernetes.io/name: nexus-web
+    app.kubernetes.io/version: "4.0"
+spec:
+  replicas: 2  # 默认双副本，HPA 可动态扩展
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nexus-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nexus-web
+        app.kubernetes.io/version: "4.0"
+    spec:
+      containers:
+        - name: nexus-web
+          image: nexusagent/nexus:v4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NEXUS_MODE
+              value: "web"
+            - name: NEXUS_HOST
+              value: "0.0.0.0"
+            - name: NEXUS_PORT
+              value: "8080"
+            - name: REDIS_URL
+              value: "redis://nexus-redis.nexus.svc.cluster.local:6379/0"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nexus-data
