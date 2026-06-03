@@ -65,6 +65,12 @@ web = [
 desktop = [
     "PyQt6>=6.6",
 ]
+local = [
+    "markitdown[all]>=0.1.0",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0",
+    "chromadb>=0.5.0",
+]
 
 [project.scripts]
 nexus = "nexusagent.cli.main:main"

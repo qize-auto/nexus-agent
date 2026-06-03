@@ -48,6 +48,21 @@ services:
     networks:
       - nexusagent_net
 
+  # 可选: SearXNG 本地聚合搜索
+  searxng:
+    image: searxng/searxng:latest
+    container_name: nexusagent_searxng
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - BASE_URL=http://localhost:8081/
+      - INSTANCE_NAME=NexusAgent-SearXNG
+    networks:
+      - nexusagent_net
+
   # 可选: 监控面板 (Prometheus + Grafana)
   # prometheus:
   #   image: prom/prometheus:latest

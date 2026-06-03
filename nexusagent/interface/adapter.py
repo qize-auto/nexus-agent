@@ -476,7 +476,7 @@ class WebAdapter(ChannelAdapter):
     - 静态文件服务 (桌面客户端资源)
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], llm: Optional[Any] = None):
         super().__init__(ChannelType.WEB, SecurityLevel.PUBLIC, config)
         self._host = config.get("host", "127.0.0.1")
         self._port = config.get("port", 8080)
@@ -486,6 +486,7 @@ class WebAdapter(ChannelAdapter):
         self._site: Optional[Any] = None
         self._ws_connections: List[Any] = []
         self._message_callback: Optional[Callable] = None
+        self._llm = llm  # v4.0+ 流式响应使用的 LLM backend
         # 限流 + 幂等 — 自动检测 Redis 分布式后端，未配置则内存降级
         redis_url = config.get("redis_url", "")
         if redis_url:
@@ -518,6 +519,8 @@ class WebAdapter(ChannelAdapter):
         self._app.router.add_get("/api/metrics", self._handle_metrics)
         self._app.router.add_get("/api/traces", self._handle_traces)
         self._app.router.add_post("/api/config", self._handle_config)
+        self._app.router.add_get("/api/models", self._handle_models)
+        self._app.router.add_post("/api/upload", self._handle_upload)
         # ── Diagnostics APIs ──
         self._app.router.add_get("/api/diagnostics/health/full", self._handle_diag_health)
         self._app.router.add_get("/api/diagnostics/connectivity", self._handle_diag_connectivity)
@@ -691,7 +694,7 @@ class WebAdapter(ChannelAdapter):
         return web.json_response({"ok": False, "error": "No handler"}, status=503)
 
     async def _handle_stream(self, request: Any) -> Any:
-        """SSE 流式输出端点 — Phase 1.3"""
+        """SSE 流式输出端点 — v4.0+ 真实 LLM 流式"""
         from aiohttp import web
 
         # 从 query params 获取消息
@@ -707,7 +710,39 @@ class WebAdapter(ChannelAdapter):
         response.headers["Connection"] = "keep-alive"
         await response.prepare(request)
 
-        # 解析消息信封
+        # ══ v4.0+ 真实流式: 如果 LLM backend 可用，直接流式输出 token ══
+        if self._llm and hasattr(self._llm, "complete_stream"):
+            try:
+                # 发送开始事件
+                await response.write(
+                    f'data: {json.dumps({"event": "start", "model": self._llm.model})}\n\n'.encode("utf-8")
+                )
+
+                messages = [
+                    {"role": "system", "content": "你是 NexusAgent，一个本地优先的 AI 助手。请用中文回复。"},
+                    {"role": "user", "content": message},
+                ]
+
+                buffer = ""
+                async for token in self._llm.complete_stream(messages):
+                    buffer += token
+                    await response.write(
+                        f'data: {json.dumps({"event": "token", "token": token})}\n\n'.encode("utf-8")
+                    )
+
+                await response.write(
+                    f'data: {json.dumps({"event": "complete", "response": buffer})}\n\n'.encode("utf-8")
+                )
+                await response.write(b"data: [DONE]\n\n")
+                return response
+            except Exception as e:
+                logger.error("WebAdapter 流式输出失败: %s", e)
+                error_evt = {"event": "error", "error": str(e)}
+                await response.write(f"data: {json.dumps(error_evt)}\n\n".encode("utf-8"))
+                await response.write(b"data: [DONE]\n\n")
+                return response
+
+        # ══ Fallback: 通过 message_callback 获取完整响应后分段输出 ══
         envelope = self.parse_inbound({"message": message, "session": session_id})
         if envelope and self._message_callback:
             try:
@@ -806,9 +841,13 @@ class WebAdapter(ChannelAdapter):
             lines = env_path.read_text(encoding="utf-8").splitlines()
 
         updates = {"DEFAULT_PROVIDER": provider, "DEFAULT_MODEL": model}
-        key_var = {"moonshot": "MOONSHOT_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY"}.get(provider)
+        key_var = {"moonshot": "MOONSHOT_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY", "ollama": "OLLAMA_API_KEY"}.get(provider)
         if key_var and api_key:
             updates[key_var] = api_key
+        if provider == "ollama":
+            updates["OLLAMA_HOST"] = data.get("ollama_host", "http://localhost:11434")
+            if not api_key and key_var:
+                updates[key_var] = ""
 
         existing = set()
         for i, line in enumerate(lines):
@@ -830,6 +869,138 @@ class WebAdapter(ChannelAdapter):
             os.environ[k] = v
 
         return web.json_response({"ok": True, "provider": provider, "model": model})
+
+    async def _handle_models(self, request: Any) -> Any:
+        """返回可用模型列表，支持 Ollama 本地查询"""
+        from aiohttp import web
+        import aiohttp
+        import os
+
+        provider = request.query.get("provider", "").strip().lower()
+        if not provider:
+            # 返回所有 provider 的模型映射
+            return web.json_response({
+                "ok": True,
+                "models": {
+                    "ollama": ["llama3.2", "qwen2.5", "deepseek-coder-v2", "mistral"],
+                    "moonshot": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+                    "deepseek": ["deepseek-chat", "deepseek-v4-pro"],
+                    "openai": ["gpt-4o-mini"],
+                },
+            })
+
+        if provider == "ollama":
+            ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(f"{ollama_host}/api/tags", timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            models = [m.get("name", "").split(":")[0] for m in data.get("models", [])]
+                            return web.json_response({"ok": True, "provider": "ollama", "models": models})
+                        else:
+                            return web.json_response({"ok": True, "provider": "ollama", "models": ["llama3.2"], "warning": f"Ollama returned {resp.status}"})
+            except Exception as e:
+                logger.warning("Ollama 模型查询失败: %s", e)
+                return web.json_response({"ok": True, "provider": "ollama", "models": ["llama3.2"], "warning": str(e)})
+
+        hardcoded = {
+            "moonshot": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+            "deepseek": ["deepseek-chat", "deepseek-v4-pro"],
+            "openai": ["gpt-4o-mini"],
+        }
+        models = hardcoded.get(provider, [])
+        return web.json_response({"ok": True, "provider": provider, "models": models})
+
+    async def _handle_upload(self, request: Any) -> Any:
+        """文件上传 + 文档转换端点"""
+        from aiohttp import web
+        import aiohttp
+        from pathlib import Path
+
+        # 确保 uploads 目录存在
+        uploads_base = Path(os.getcwd()) / "uploads"
+        uploads_base.mkdir(exist_ok=True)
+
+        reader = await request.multipart()
+        file_field = await reader.next()
+        if not file_field or not file_field.filename:
+            return web.json_response({"error": "No file provided"}, status=400)
+
+        filename = file_field.filename
+        # 清理文件名，防止路径遍历
+        safe_name = Path(filename).name
+        if not safe_name or safe_name.startswith("."):
+            return web.json_response({"error": "Invalid filename"}, status=400)
+
+        # 大小限制 (20MB)
+        max_size = 20 * 1024 * 1024
+        data = b""
+        chunk_size = 64 * 1024
+        while True:
+            chunk = await file_field.read_chunk(chunk_size)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > max_size:
+                return web.json_response({"error": "File too large (max 20MB)"}, status=413)
+
+        # 保存文件
+        file_path = uploads_base / safe_name
+        try:
+            file_path.write_bytes(data)
+        except Exception as e:
+            return web.json_response({"error": f"Failed to save file: {e}"}, status=500)
+
+        # 文档转换
+        try:
+            from nexusagent.tools.document import DocumentConverterTool
+            converter = DocumentConverterTool(uploads_dir=str(uploads_base))
+            result = await converter.convert(str(file_path))
+        except Exception as e:
+            logger.error("文档转换失败: %s", e)
+            return web.json_response({
+                "ok": True,
+                "file_path": str(file_path),
+                "filename": safe_name,
+                "file_size": len(data),
+                "text": "",
+                "error": f"转换失败: {e}",
+            })
+
+        # v4.0+ 自动索引到 ChromaDB（异步后台，不影响响应）
+        if result.success and result.text:
+            try:
+                from nexusagent.memory.vector_store import ChromaVectorStore
+                from nexusagent.tools.rag import _chunk_text
+                store = ChromaVectorStore()
+                session_id = request.query.get("session", "")
+                chunks = _chunk_text(result.text, chunk_size=1000, overlap=200)
+                for idx, chunk in enumerate(chunks):
+                    await store.add_document(
+                        text=chunk,
+                        metadata={
+                            "filename": safe_name,
+                            "session_id": session_id,
+                            "chunk_index": idx,
+                            "total_chunks": len(chunks),
+                        },
+                        doc_id=f"{safe_name}_{idx}_{session_id}",
+                    )
+                logger.info("文档已索引到 ChromaDB: %s (%d chunks)", safe_name, len(chunks))
+            except Exception as e:
+                logger.warning("ChromaDB 索引失败 (不影响上传): %s", e)
+
+        return web.json_response({
+            "ok": result.success,
+            "file_path": str(file_path),
+            "filename": safe_name,
+            "file_size": len(data),
+            "mime_type": result.mime_type,
+            "text": result.text[:8000] if result.success else "",
+            "indexed": result.success and len(result.text) > 0,
+            "error": result.error,
+        })
 
     async def _handle_static(self, request: Any) -> Any:
         from aiohttp import web

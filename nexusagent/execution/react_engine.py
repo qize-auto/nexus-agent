@@ -188,6 +188,7 @@ class ReActEngine:
         window_manager: Any = None,
         anti_compression: Any = None,
         completeness_validator: Any = None,
+        recovery_engine: Any = None,
     ):
         self._llm = llm
         self._tools = tools
@@ -204,6 +205,7 @@ class ReActEngine:
         self._window_manager = window_manager  # SlidingWindow 上下文管理器
         self._anti_compression = anti_compression  # v4.0+ 防偷懒检测器
         self._completeness_validator = completeness_validator  # v4.0+ 完整性验证器
+        self._recovery = recovery_engine  # v4.0+ 错误自我纠正引擎
 
     def _validate_answer(self, answer: str, task_context: Any = None) -> str:
         """在输出前应用防偷懒和完整性验证 — v4.0+"""
@@ -475,12 +477,39 @@ class ReActEngine:
                     except Exception as e:
                         logger.error("Tool execution error: %s", e)
                         self._error_count += 1
-                        result = ToolResult(
-                            call=call,
-                            output=None,
-                            execution_time_ms=0,
-                            error=str(e),
-                        )
+                        error_msg = str(e)
+
+                        # ══ v4.0+ 错误自我纠正: 尝试替代工具 ══
+                        recovered_output = None
+                        if self._recovery and self._recovery.can_recover(tool_name, error_msg):
+                            try:
+                                action = self._recovery.recover(tool_name, error_msg, arguments)
+                                if action:
+                                    logger.info("尝试错误恢复: %s → %s", tool_name, action.tool_name)
+                                    recovered_output = await asyncio.wait_for(
+                                        action.execute(self._tools),
+                                        timeout=30.0,
+                                    )
+                                    logger.info("错误恢复成功: %s", action.tool_name)
+                            except Exception as rec_e:
+                                logger.warning("错误恢复失败: %s", rec_e)
+
+                        if recovered_output:
+                            result = ToolResult(
+                                call=call,
+                                output=recovered_output,
+                                execution_time_ms=0,
+                            )
+                            self._tool_cache[cache_key] = result
+                            self._error_count = max(0, self._error_count - 1)  # 恢复成功，降低错误计数
+                        else:
+                            result = ToolResult(
+                                call=call,
+                                output=None,
+                                execution_time_ms=0,
+                                error=error_msg,
+                            )
+
                         if self._error_count >= self._circuit_threshold:
                             return ReActResult(
                                 answer=self._validate_answer(f"Circuit breaker triggered after {self._error_count} errors", task_context),

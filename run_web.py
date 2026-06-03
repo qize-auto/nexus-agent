@@ -51,11 +51,14 @@ async def init_agent():
 async def main():
     await init_agent()
 
-    adapter = WebAdapter(config={
-        "host": "127.0.0.1",
-        "port": 8080,
-        "static_path": str(PROJECT_ROOT),
-    })
+    adapter = WebAdapter(
+        config={
+            "host": "127.0.0.1",
+            "port": 8080,
+            "static_path": str(PROJECT_ROOT),
+        },
+        llm=_agent.current_llm if _agent else None,
+    )
     adapter.register_message_callback(_handle_message)
     await adapter.start()
 

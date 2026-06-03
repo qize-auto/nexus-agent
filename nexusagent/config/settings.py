@@ -106,6 +106,7 @@ class ModelConfig:
     # Fallback 链: 格式 "provider/model" 或纯模型名
     fallback_chain: list[str] = field(default_factory=lambda: [
         "deepseek/deepseek-chat",
+        "ollama/llama3.2",
         "moonshot/moonshot-v1-8k",
         "deepseek/deepseek-v4-pro",
         "openai/gpt-4o-mini",
@@ -122,6 +123,23 @@ class ModelConfig:
     long_context_model: str = "deepseek/deepseek-v4-pro"
     coding_model: str = "deepseek/deepseek-chat"
     fast_model: str = "openai/gpt-4o-mini"
+
+
+@dataclass
+class StrictModeConfig:
+    """严谨执行模式配置 — 设计稿第9章"""
+    # 模式切换: "auto"(自动检测), "strict"(强制严谨), "chat"(强制对话)
+    mode: str = "auto"
+    # 最大澄清轮数
+    max_clarify_rounds: int = 3
+    # 最大重试次数
+    max_retry_attempts: int = 3
+    # 是否启用 LLM 增强意图分析
+    llm_enhanced_analysis: bool = True
+    # 是否启用 5 Expert 研讨
+    enable_deliberation: bool = True
+    # 验证失败时是否自动重试
+    auto_retry_on_failure: bool = True
 
 
 @dataclass
@@ -147,6 +165,7 @@ class AppConfig:
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     channels: ChannelConfig = field(default_factory=ChannelConfig)
+    strict: StrictModeConfig = field(default_factory=StrictModeConfig)
 
     @classmethod
     def from_yaml(cls, path: Optional[str] = None) -> AppConfig:
@@ -185,6 +204,7 @@ class AppConfig:
             memory=_safe_subconfig(MemoryConfig, "memory"),
             model=_safe_subconfig(ModelConfig, "model"),
             channels=_safe_subconfig(ChannelConfig, "channels"),
+            strict=_safe_subconfig(StrictModeConfig, "strict"),
         )
 
 

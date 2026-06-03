@@ -529,6 +529,41 @@ class MemoryStore:
 
         return await self._run_sync(_clean)
 
+    async def compact(self) -> Dict[str, Any]:
+        """VACUUM 压缩数据库，回收碎片空间"""
+        def _compact():
+            before = self._db_path.stat().st_size if self._db_path.exists() else 0
+            self._conn.execute("VACUUM")
+            after = self._db_path.stat().st_size if self._db_path.exists() else 0
+            return {"before_bytes": before, "after_bytes": after, "freed_bytes": before - after}
+
+        return await self._run_sync(_compact)
+
+    def get_size(self) -> int:
+        """返回数据库文件大小（字节）"""
+        return self._db_path.stat().st_size if self._db_path.exists() else 0
+
+    async def health_check(self) -> Dict[str, Any]:
+        """数据库健康检查"""
+        def _check():
+            # 检查数据库完整性
+            cursor = self._conn.execute("PRAGMA integrity_check")
+            integrity = cursor.fetchone()[0]
+            # 获取表统计
+            cursor = self._conn.execute("SELECT COUNT(*) FROM memories")
+            memory_count = cursor.fetchone()[0]
+            cursor = self._conn.execute("SELECT COUNT(*) FROM checkpoints")
+            checkpoint_count = cursor.fetchone()[0]
+            return {
+                "integrity": integrity,
+                "memory_count": memory_count,
+                "checkpoint_count": checkpoint_count,
+                "db_size_bytes": self.get_size(),
+                "vec_available": self._vec_available,
+            }
+
+        return await self._run_sync(_check)
+
     def close(self) -> None:
         """关闭数据库连接"""
         if self._conn:

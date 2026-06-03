@@ -623,6 +623,437 @@ def cmd_graph_visualize(args: list) -> int:
     print("```")
     return 0
 
+def cmd_benchmark(args: list) -> int:
+    """LLM Provider 性能基准测试
+    Usage: nexus benchmark [--provider <p>] [--model <m>] [--runs <n>] [--dry-run] [--output <file>]
+    """
+    _ensure_project_root()
+    import asyncio
+
+    provider = "deepseek"
+    model = "deepseek-chat"
+    runs = 3
+    dry_run = False
+    output_file = ""
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--provider" and i + 1 < len(args):
+            provider = args[i + 1]
+            i += 2
+        elif args[i] == "--model" and i + 1 < len(args):
+            model = args[i + 1]
+            i += 2
+        elif args[i] == "--runs" and i + 1 < len(args):
+            runs = int(args[i + 1])
+            i += 2
+        elif args[i] == "--dry-run":
+            dry_run = True
+            i += 1
+        elif args[i] == "--output" and i + 1 < len(args):
+            output_file = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    from nexusagent.benchmark.runner import BenchmarkRunner
+    from nexusagent.benchmark.report import BenchmarkReport
+
+    async def _run():
+        runner = BenchmarkRunner()
+        print(f"🧪 开始基准测试: {provider}/{model} (runs={runs}, dry_run={dry_run})")
+        result = await runner.run_provider(provider, model, runs=runs, dry_run=dry_run)
+        report = BenchmarkReport([result])
+        md = report.to_markdown()
+        print(md)
+        if output_file:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(md)
+            print(f"\n✓ 报告已保存: {output_file}")
+        return 0
+
+    return asyncio.run(_run())
+
+
+def cmd_backup(args: list) -> int:
+    """记忆系统备份管理
+    Usage: nexus backup [create|list|restore|cleanup] [--label <label>]
+    """
+    _ensure_project_root()
+    from nexusagent.memory.backup import MemoryBackupManager
+
+    action = args[0] if args else "create"
+    label = ""
+    i = 0
+    while i < len(args):
+        if args[i] == "--label" and i + 1 < len(args):
+            label = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    mgr = MemoryBackupManager()
+
+    if action == "create":
+        info = mgr.backup(label=label)
+        print(f"✓ 备份创建成功: {info.timestamp}")
+        print(f"  路径: {info.path}")
+        print(f"  大小: {info.size_bytes / 1024 / 1024:.1f} MB")
+        print(f"  文件数: {info.file_count}")
+        return 0
+
+    elif action == "list":
+        backups = mgr.list_backups()
+        if not backups:
+            print("暂无备份")
+            return 0
+        print(f"{'时间戳':<25} {'大小(MB)':>10} {'文件数':>8}")
+        print("-" * 50)
+        for b in backups:
+            print(f"{b.timestamp:<25} {b.size_bytes / 1024 / 1024:>10.1f} {b.file_count:>8}")
+        return 0
+
+    elif action == "restore":
+        if len(args) < 2 or args[1].startswith("-"):
+            print("用法: nexus backup restore <timestamp>")
+            return 1
+        timestamp = args[1]
+        if mgr.restore(timestamp):
+            print(f"✓ 备份已恢复: {timestamp}")
+            return 0
+        else:
+            print(f"❌ 恢复失败: {timestamp}")
+            return 1
+
+    elif action == "cleanup":
+        deleted = mgr.auto_cleanup()
+        print(f"✓ 已清理 {deleted} 个旧备份")
+        return 0
+
+    elif action == "status":
+        usage = mgr.get_disk_usage()
+        print("磁盘使用统计:")
+        for name, size in usage.items():
+            print(f"  {name:<15} {size / 1024 / 1024:>10.1f} MB")
+        return 0
+
+    else:
+        print(f"未知操作: {action}")
+        print("用法: nexus backup [create|list|restore|cleanup|status]")
+        return 1
+
+
+def cmd_evolution(args: list) -> int:
+    """自我进化系统: nexus evolution status | review | approve <id> | reject <id> | history | rollback <dim> [ver]
+    Usage:
+        nexus evolution status          查看进化系统状态
+        nexus evolution review          查看待审批建议
+        nexus evolution approve <id>    批准建议
+        nexus evolution reject <id>     拒绝建议
+        nexus evolution history         查看配置历史
+        nexus evolution rollback <dim> [ver]  回滚配置
+    """
+    _ensure_project_root()
+    import asyncio
+    from pathlib import Path
+    from nexusagent.evolution.engine import EvolutionEngine
+    from nexusagent.benchmark.runner import BenchmarkRunner
+    from nexusagent.evolution.strategies import (
+        PromptOptimizationStrategy,
+        ToolMappingStrategy,
+        BudgetTuningStrategy,
+    )
+
+    subcmd = args[0] if args else "status"
+    rest = args[1:]
+
+    config_dir = Path.home() / ".nexusagent" / "evolution"
+    engine = EvolutionEngine(
+        config_dir=str(config_dir),
+        benchmark_runner=BenchmarkRunner(),
+    )
+    engine.register_strategy(PromptOptimizationStrategy())
+    engine.register_strategy(ToolMappingStrategy())
+    engine.register_strategy(BudgetTuningStrategy())
+
+    async def _run():
+        if subcmd == "status":
+            status = engine.get_status()
+            print("🧬 自我进化系统状态")
+            print(f"   注册策略: {status['strategies_registered']} 个")
+            for s in status["strategies"]:
+                print(f"      • {s['dimension']} ({s['class']})")
+            print(f"   待审批建议: {status['pending_proposals']} 个")
+            print("   配置历史:")
+            for dim, count in status["config_history"].items():
+                print(f"      • {dim}: {count} 个版本")
+            return 0
+
+        elif subcmd == "review":
+            pending = engine.get_pending_proposals()
+            if not pending:
+                print("暂无待审批的进化建议")
+                return 0
+            print(f"📋 待审批建议 ({len(pending)} 个):")
+            for p in pending:
+                print(f"\n   ID: {p.id}")
+                print(f"   维度: {p.dimension}")
+                print(f"   置信度: {p.confidence:.2f}")
+                print(f"   描述: {p.description}")
+                print(f"   创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(p.created_at))}")
+                print(f"   操作: nexus evolution approve {p.id} | nexus evolution reject {p.id}")
+            return 0
+
+        elif subcmd == "approve" and rest:
+            proposal_id = rest[0]
+            approver = os.getenv("USER", "cli_user")
+            if engine.approve(proposal_id, approver):
+                print(f"✓ 建议已批准: {proposal_id}")
+                # 尝试自动部署
+                pending = engine.get_pending_proposals()
+                for p in pending:
+                    if p.id == proposal_id:
+                        print("  开始 A/B 测试并部署...")
+                        success = await engine.deploy(p)
+                        if success:
+                            print("  ✓ 配置已部署")
+                        else:
+                            print("  ✗ A/B 测试未通过，配置已回滚")
+                        break
+                return 0
+            print(f"❌ 批准失败: {proposal_id}")
+            return 1
+
+        elif subcmd == "reject" and rest:
+            proposal_id = rest[0]
+            approver = os.getenv("USER", "cli_user")
+            if engine.reject(proposal_id, approver):
+                print(f"✓ 建议已拒绝: {proposal_id}")
+                return 0
+            print(f"❌ 拒绝失败: {proposal_id}")
+            return 1
+
+        elif subcmd == "history":
+            print("📜 配置历史:")
+            for strategy in engine.list_strategies():
+                dim = strategy["dimension"]
+                versions = engine._history.list(dim)
+                if versions:
+                    print(f"\n   {dim} ({len(versions)} 个版本):")
+                    for v in versions[:10]:
+                        ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(v.timestamp))
+                        print(f"      • {v.version_id} @ {ts} — {v.description}")
+            return 0
+
+        elif subcmd == "rollback" and rest:
+            dimension = rest[0]
+            version_id = rest[1] if len(rest) > 1 else None
+            if engine.rollback(dimension, version_id):
+                print(f"✓ 配置已回滚: {dimension}")
+                return 0
+            print(f"❌ 回滚失败: {dimension}")
+            return 1
+
+        elif subcmd == "run":
+            print("🧬 启动进化周期...")
+            proposals = await engine.run_cycle()
+            if proposals:
+                print(f"   生成 {len(proposals)} 个进化建议")
+                for p in proposals:
+                    print(f"   • [{p.dimension}] {p.description} (confidence={p.confidence:.2f})")
+                print(f"\n   使用 'nexus evolution review' 查看待审批建议")
+            else:
+                print("   未生成进化建议（当前配置已优化或冷却中）")
+            return 0
+
+        elif subcmd == "mode" and rest:
+            new_mode = rest[0]
+            try:
+                engine.set_mode(new_mode)
+                print(f"✓ 进化模式已切换为: {new_mode}")
+                if new_mode == "off":
+                    print("   提示: 进化系统已关闭，可使用 'nexus evolution run' 手动触发")
+                elif new_mode == "notify":
+                    print("   提示: 后台分析后会通知您审批")
+                elif new_mode == "auto":
+                    print("   提示: 高置信度建议将自动部署")
+                return 0
+            except ValueError as e:
+                print(f"❌ {e}")
+                return 1
+
+        else:
+            print("用法: nexus evolution <status|review|approve|reject|history|rollback|run|mode>")
+            print("  nexus evolution status              查看状态")
+            print("  nexus evolution review              查看待审批建议")
+            print("  nexus evolution approve <id>        批准建议")
+            print("  nexus evolution reject <id>         拒绝建议")
+            print("  nexus evolution history             查看配置历史")
+            print("  nexus evolution rollback <dim>      回滚配置")
+            print("  nexus evolution run                 手动触发进化周期")
+            print("  nexus evolution mode <off|notify|auto>  切换运行模式")
+            return 0
+
+    return asyncio.run(_run())
+
+
+def cmd_module(args: list) -> int:
+    """模块管理: nexus module init <name> | ls | health
+    Usage:
+        nexus module init my_skill --desc "我的技能" --author "user"
+        nexus module ls
+        nexus module health
+    """
+    _ensure_project_root()
+    import shutil
+
+    subcmd = args[0] if args else "ls"
+
+    if subcmd == "init":
+        if len(args) < 2:
+            print("用法: nexus module init <name> [--desc <描述>] [--author <作者>]")
+            return 1
+
+        name = args[1]
+        desc = f"{name} 模块"
+        author = "unknown"
+        i = 2
+        while i < len(args):
+            if args[i] == "--desc" and i + 1 < len(args):
+                desc = args[i + 1]
+                i += 2
+            elif args[i] == "--author" and i + 1 < len(args):
+                author = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        target = Path("modules") / name
+        if target.exists():
+            print(f"❌ 模块目录已存在: {target}")
+            return 1
+
+        # 复制模板
+        template_dir = Path(__file__).parent.parent.parent / "templates" / "module"
+        if not template_dir.exists():
+            print(f"❌ 模板目录不存在: {template_dir}")
+            return 1
+
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "tests").mkdir(exist_ok=True)
+
+        # 生成文件
+        replacements = {
+            "{{module_name}}": name,
+            "{{ModuleName}}": name.replace("_", " ").title().replace(" ", ""),
+            "{{module_description}}": desc,
+            "{{author}}": author,
+            "{{tag1}}": name.split("_")[0] if "_" in name else name,
+            "{{tag2}}": "skill",
+        }
+
+        for tmpl_file in ["__init__.py", "module_spec.py", "handlers.py"]:
+            src = template_dir / tmpl_file
+            if src.exists():
+                content = src.read_text(encoding="utf-8")
+                for k, v in replacements.items():
+                    content = content.replace(k, v)
+                dest = target / tmpl_file
+                dest.write_text(content, encoding="utf-8")
+
+        # 测试文件
+        test_src = template_dir / "tests" / "test_module.py"
+        if test_src.exists():
+            content = test_src.read_text(encoding="utf-8")
+            for k, v in replacements.items():
+                content = content.replace(k, v)
+            (target / "tests" / "test_module.py").write_text(content, encoding="utf-8")
+        (target / "tests" / "__init__.py").write_text("", encoding="utf-8")
+
+        print(f"✓ 模块已创建: {target}")
+        print(f"  名称: {name}")
+        print(f"  描述: {desc}")
+        print(f"  作者: {author}")
+        print(f"\n下一步:")
+        print(f"  1. 编辑 {target}/module_spec.py 实现业务逻辑")
+        print(f"  2. 编辑 {target}/handlers.py 实现处理函数")
+        print(f"  3. 运行 pytest {target}/tests/ 确保测试通过")
+        return 0
+
+    elif subcmd == "ls":
+        from nexusagent.core.registry import get_module_registry
+        registry = get_module_registry()
+        modules = registry.list_modules()
+        if not modules:
+            print("暂无注册的模块")
+            return 0
+        print(f"{'模块名':<30} {'版本':<10} {'状态':<12} {'能力'}")
+        print("-" * 70)
+        for m in modules:
+            caps = ",".join(k for k, v in m["capabilities"].items() if v)
+            print(f"{m['name']:<30} {m['version']:<10} {m['state']:<12} {caps}")
+        return 0
+
+    elif subcmd == "health":
+        from nexusagent.core.registry import get_module_registry
+        registry = get_module_registry()
+        health = registry.health_check_all()
+        print(f"{'模块名':<30} {'状态':<12} {'详情'}")
+        print("-" * 60)
+        for name, h in health.items():
+            status = h.get("status", "unknown")
+            detail = h.get("error", "") or h.get("details", "")
+            emoji = "🟢" if status == "healthy" else "🟡" if status == "degraded" else "🔴"
+            print(f"{emoji} {name:<28} {status:<12} {str(detail)[:40]}")
+        return 0
+
+    else:
+        print(f"未知操作: {subcmd}")
+        print("用法: nexus module <init|ls|health>")
+        return 1
+
+
+def cmd_mode(args: list) -> int:
+    """严谨执行模式管理: nexus mode <auto|strict|chat> | status
+    Usage:
+        nexus mode auto       自动检测模式（默认）
+        nexus mode strict     强制严谨执行模式
+        nexus mode chat       强制对话模式
+        nexus mode status     查看当前模式配置
+    """
+    _ensure_project_root()
+    from nexusagent.config.settings import get_config, reload_config
+
+    subcmd = args[0] if args else "status"
+    config = get_config()
+
+    if subcmd in ("auto", "strict", "chat"):
+        config.strict.mode = subcmd
+        print(f"✓ 严谨执行模式已切换为: {subcmd}")
+        if subcmd == "auto":
+            print("   说明: 自动检测用户意图，任务请求走严谨模式，对话走常规模式")
+        elif subcmd == "strict":
+            print("   说明: 所有请求均走严谨执行模式（意图分析 + 任务分解 + 验证交付）")
+        elif subcmd == "chat":
+            print("   说明: 所有请求走常规 ReAct 对话模式")
+        return 0
+
+    elif subcmd == "status":
+        print("📋 严谨执行模式状态")
+        print(f"   当前模式: {config.strict.mode}")
+        print(f"   最大澄清轮数: {config.strict.max_clarify_rounds}")
+        print(f"   最大重试次数: {config.strict.max_retry_attempts}")
+        print(f"   LLM 增强分析: {'启用' if config.strict.llm_enhanced_analysis else '禁用'}")
+        print(f"   5 Expert 研讨: {'启用' if config.strict.enable_deliberation else '禁用'}")
+        print(f"   自动重试: {'启用' if config.strict.auto_retry_on_failure else '禁用'}")
+        return 0
+
+    else:
+        print(f"❌ 未知模式: {subcmd}")
+        print("用法: nexus mode <auto|strict|chat|status>")
+        return 1
+
+
 def main() -> int:
     """CLI 主入口"""
     if len(sys.argv) < 2:
@@ -641,6 +1072,11 @@ def main() -> int:
         print("  eval           运行 pytest 测试套件")
         print("  eval-framework 运行评估框架")
         print("  regression     运行回归测试")
+        print("  benchmark      LLM Provider 性能基准测试")
+        print("  backup         记忆系统备份管理")
+        print("  module         模块管理 (init/ls/health)")
+        print("  evolution      自我进化系统 (status/review/approve/reject/history/rollback/run/mode)")
+        print("  mode           严谨执行模式切换 (auto/strict/chat/status)")
         print("  mcp            启动 MCP Server")
         print("  tool           工具管理 (ls/info/search)")
         print("  profile        用户画像 (show/learn/forget)")
@@ -659,6 +1095,11 @@ def main() -> int:
         "eval": cmd_eval,
         "eval-framework": cmd_eval_framework,
         "regression": cmd_regression,
+        "benchmark": cmd_benchmark,
+        "backup": cmd_backup,
+        "module": cmd_module,
+        "evolution": cmd_evolution,
+        "mode": cmd_mode,
         "mcp": cmd_mcp,
         "tool": cmd_tool,
         "profile": cmd_profile,

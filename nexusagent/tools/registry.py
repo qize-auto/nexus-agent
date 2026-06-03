@@ -112,6 +112,9 @@ class ToolRegistry:
             "nexusagent.tools.api_client",
             "nexusagent.tools.archive",
             "nexusagent.tools.database",
+            "nexusagent.tools.search",              # v4.0+ SearXNG 聚合搜索
+            "nexusagent.tools.document",            # v4.0+ 文档转换 (PDF/Office → Markdown)
+            "nexusagent.tools.rag",                 # v4.0+ RAG 文档检索
             "nexusagent.execution.chunked_reader",  # v4.0+ 强制分块读取工具
             "nexusagent.memory.self_editing",       # v4.0+ 记忆自编辑工具
         ]
@@ -169,6 +172,11 @@ class ToolRegistry:
             except Exception as e:
                 logger.warning("加载内置模块 %s 失败: %s", module_name, e)
         self._builtin_discovered = True
+        # v4.0+ 自动同步到 ModuleRegistry
+        try:
+            register_with_module_registry(self)
+        except Exception as e:
+            logger.debug("ToolRegistry → ModuleRegistry 同步失败（可忽略）: %s", e)
         return count
 
     def discover_plugins(self) -> int:
@@ -367,3 +375,36 @@ def get_registry() -> ToolRegistry:
         _registry = ToolRegistry()
         _registry.discover_builtin_tools()
     return _registry
+
+
+# ── v4.0+ ModuleRegistry 集成 ──
+
+def register_with_module_registry(tool_registry: ToolRegistry) -> int:
+    """
+    将 ToolRegistry 中已发现的工具同步注册到 ModuleRegistry
+
+    这是向后兼容层 — 现有工具自动获得 ModuleSpec 生命周期管理能力。
+
+    Returns:
+        成功注册的模块数量
+    """
+    try:
+        from nexusagent.core.registry import ModuleRegistry, SimpleModuleSpec
+    except ImportError:
+        logger.debug("ModuleRegistry 不可用，跳过集成")
+        return 0
+
+    mod_registry = ModuleRegistry()
+    count = 0
+    for name, tool in tool_registry._tools.items():
+        try:
+            spec = SimpleModuleSpec(tool.instance if tool else None, source=tool.metadata.source if tool else "builtin")
+            spec.name = name
+            spec.description = tool.metadata.description if tool else ""
+            spec.provides_tools = True
+            if mod_registry.register(spec):
+                count += 1
+        except Exception as e:
+            logger.debug("工具 %s 注册到 ModuleRegistry 失败: %s", name, e)
+    logger.info("ToolRegistry → ModuleRegistry 同步完成: %d/%d 个工具", count, len(tool_registry._tools))
+    return count

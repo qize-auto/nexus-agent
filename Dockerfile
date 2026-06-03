@@ -51,15 +51,19 @@ WORKDIR /app
 # 复制应用代码
 COPY --chown=nexus:nexus . /app/
 
-# 创建数据目录
-RUN mkdir -p /app/data && chown -R nexus:nexus /app/data
+# 创建数据目录和运行时目录
+RUN mkdir -p /app/data /app/uploads /app/chroma_db /app/backups && \
+    chown -R nexus:nexus /app/data /app/uploads /app/chroma_db /app/backups
 
 # 切换到非 root 用户
 USER nexus
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+# 优雅关闭信号
+STOPSIGNAL SIGTERM
+
+# 健康检查（检查 /api/health 端点）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')" || exit 1
 
 # 暴露端口
 EXPOSE 8080

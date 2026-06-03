@@ -115,9 +115,15 @@ class NexusBridge(QObject):
                 "moonshot": "MOONSHOT_API_KEY",
                 "deepseek": "DEEPSEEK_API_KEY",
                 "openai": "OPENAI_API_KEY",
+                "ollama": "OLLAMA_API_KEY",
             }.get(provider)
             if key_var and api_key:
                 updates[key_var] = api_key
+            if provider == "ollama":
+                updates["OLLAMA_HOST"] = data.get("ollama_host", "http://localhost:11434")
+                # Ollama 本地运行不需要 API key，若为空则保持空字符串
+                if not api_key and key_var:
+                    updates[key_var] = ""
 
             existing = set()
             for i, line in enumerate(lines):

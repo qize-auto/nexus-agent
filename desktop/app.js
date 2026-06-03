@@ -483,15 +483,75 @@
   // 通信层
   // ═══════════════════════════════════════════════
 
+  let uploadedFileText = '';
+  let uploadedFileName = '';
+
+  async function uploadFile(file) {
+    const previewEl = $('#upload-preview');
+    const filenameEl = previewEl ? previewEl.querySelector('.upload-filename') : null;
+
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      showAlertToast('warning', '文件过大', '单文件上限 20MB');
+      return;
+    }
+
+    if (filenameEl) filenameEl.textContent = '上传中… ' + file.name;
+    if (previewEl) previewEl.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(API_BASE + '/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        uploadedFileText = data.text || '';
+        uploadedFileName = data.filename || file.name;
+        if (filenameEl) filenameEl.textContent = '📎 ' + uploadedFileName;
+        showAlertToast('info', '文件已转换', uploadedFileName + ' 已准备就绪');
+      } else {
+        uploadedFileText = '';
+        uploadedFileName = '';
+        if (filenameEl) filenameEl.textContent = '';
+        if (previewEl) previewEl.classList.add('hidden');
+        showAlertToast('error', '上传失败', data.error || '未知错误');
+      }
+    } catch (e) {
+      uploadedFileText = '';
+      uploadedFileName = '';
+      if (previewEl) previewEl.classList.add('hidden');
+      showAlertToast('error', '上传失败', e.message || '网络错误');
+    }
+  }
+
+  function clearUpload() {
+    uploadedFileText = '';
+    uploadedFileName = '';
+    const previewEl = $('#upload-preview');
+    const fileInput = $('#file-input');
+    if (previewEl) previewEl.classList.add('hidden');
+    if (fileInput) fileInput.value = '';
+  }
+
   async function sendMessage() {
     if (isProcessing) return;
     const ta = $('#message-input');
-    const text = ta ? ta.value.trim() : '';
-    if (!text) return;
+    let text = ta ? ta.value.trim() : '';
+    if (!text && !uploadedFileText) return;
+
+    // 如果上传了文件，将文件内容附加到消息中
+    if (uploadedFileText) {
+      text = text + '\n\n---\n📎 文件内容: ' + uploadedFileName + '\n' + uploadedFileText;
+    }
 
     addMessage('user', text);
     if (ta) { ta.value = ''; ta.style.height = 'auto'; }
     updateCharCount();
+    clearUpload();
     renderSessionList();
 
     isProcessing = true;
@@ -618,15 +678,24 @@
     if (!providerSel || !modelSel) return;
 
     const modelsByProvider = {
+      ollama: ['llama3.2', 'qwen2.5', 'deepseek-coder-v2', 'mistral'],
       moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
       deepseek: ['deepseek-chat', 'deepseek-v4-pro'],
-      openai: ['openai/gpt-4o-mini'],
+      openai: ['gpt-4o-mini'],
     };
 
+    const ollamaHostSection = $('#section-ollama-host');
     providerSel.addEventListener('change', () => {
       const models = modelsByProvider[providerSel.value] || [];
       modelSel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+      if (ollamaHostSection) {
+        ollamaHostSection.style.display = providerSel.value === 'ollama' ? '' : 'none';
+      }
     });
+    // 初始化显示状态
+    if (ollamaHostSection) {
+      ollamaHostSection.style.display = providerSel.value === 'ollama' ? '' : 'none';
+    }
   }
 
   async function saveConfig() {
@@ -634,7 +703,8 @@
     const model = $('#setting-model').value;
     const apiKey = $('#setting-apikey').value.trim();
     const statusEl = $('#save-status');
-    const payload = JSON.stringify({ provider, model, api_key: apiKey });
+    const ollamaHost = provider === 'ollama' ? ($('#setting-ollama-host')?.value || 'http://localhost:11434') : '';
+    const payload = JSON.stringify({ provider, model, api_key: apiKey, ollama_host: ollamaHost });
 
     if (statusEl) { statusEl.textContent = '正在保存…'; statusEl.className = 'save-status'; }
 
@@ -1290,6 +1360,21 @@
       ta.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
       });
+    }
+
+    // 文件上传
+    const btnUpload = $('#btn-upload');
+    const fileInput = $('#file-input');
+    const btnClearUpload = $('#btn-clear-upload');
+    if (btnUpload && fileInput) {
+      btnUpload.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) uploadFile(file);
+      });
+    }
+    if (btnClearUpload) {
+      btnClearUpload.addEventListener('click', clearUpload);
     }
 
     // 新对话

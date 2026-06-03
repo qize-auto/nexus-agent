@@ -1,0 +1,19 @@
+# NexusAgent v4.0+ — ReAct 预算配置
+# 该文件可被进化系统修改，但绝不修改对应的 .py 文件
+
+react_budget:
+  max_iterations:
+    default: 25
+    coding_task: 15
+    research_task: 35
+    quick_task: 10
+
+  max_tokens:
+    default: 8000
+    long_context: 16000
+    coding_task: 12000
+
+  max_time_seconds:
+    default: 120.0
+    quick_task: 30.0
+    research_task: 180.0

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import sys
 import time
 from typing import Any, Dict, Optional, Tuple
@@ -26,6 +27,7 @@ from nexusagent.security.guardrails import (
 )
 from nexusagent.memory.store import MemoryStore
 from nexusagent.observability.auto_tracer import trace_span
+from nexusagent.execution.mode_switch import StrictModeDetector, ModeDetectionResult
 
 
 def setup_logging(config: AppConfig) -> None:
@@ -108,13 +110,47 @@ class NexusAgent:
         self._cache_maxsize: int = 128
         self._cache_ttl_seconds: float = 300.0  # 5分钟TTL
         self._audit_logger: Optional[Any] = None
-        self._message_count: int = 0  # v4.0+ 消息计数器（用于 DreamEngine 自动触发）
-        self._dream_trigger_interval: int = 10  # 每处理 N 条消息后触发 dream_cycle
+        # v4.0+ 统一模块注册中心
+        self._module_registry: Optional[Any] = None
+        # v4.0+ 空闲检测器（DreamEngine 空闲自动触发）
+        self._idle_detector: Optional[Any] = None
+        # v4.0+ 自我进化引擎（可选）
+        self._evolution: Optional[Any] = None
+        # v4.0+ 严谨执行模式
+        self._strict_detector: Optional[StrictModeDetector] = None
+        self._strict_workflow: Optional[Any] = None
 
     async def initialize(self) -> None:
         """初始化所有子系统"""
+        # v4.0+ 统一模块注册中心引导（向后兼容：失败不影响现有初始化）
+        try:
+            from nexusagent.core.registry import get_module_registry
+            from nexusagent.core.bootstrap import bootstrap_modules
+            self._module_registry = get_module_registry()
+            bootstrap_results = bootstrap_modules(self._module_registry, self._config)
+            init_results = self._module_registry.initialize_all()
+            logging.debug(
+                "ModuleRegistry 引导完成: registered=%d initialized=%d",
+                sum(bootstrap_results.values()),
+                sum(init_results.values()),
+            )
+        except Exception as e:
+            logging.warning("ModuleRegistry 引导失败（回退到现有初始化）: %s", e)
+            self._module_registry = None
+
         # 记忆层（带AES-256加密）
         from nexusagent.memory.encryption import MemoryEncryption
+        # v4.0+: 友好引导 — 如果 NEXUS_MASTER_KEY 未设置，自动生成并提示用户保存
+        if not os.environ.get("NEXUS_MASTER_KEY"):
+            import base64
+            auto_key = base64.b64encode(os.urandom(32)).decode()
+            os.environ["NEXUS_MASTER_KEY"] = auto_key
+            logging.warning(
+                "NEXUS_MASTER_KEY 未设置，已自动生成临时密钥。"
+                "如需持久化，请将以下密钥保存到环境变量:\n"
+                "  export NEXUS_MASTER_KEY=%s",
+                auto_key,
+            )
         self._encryption = MemoryEncryption()
         self._memory = MemoryStore(
             self._config.memory.db_path,
@@ -200,6 +236,10 @@ class NexusAgent:
         from nexusagent.execution.completeness import CompletenessValidator
         self._completeness = CompletenessValidator()
 
+        # v4.0+ 错误自我纠正引擎
+        from nexusagent.execution.error_recovery import ErrorRecoveryEngine
+        self._recovery_engine = ErrorRecoveryEngine(tool_registry=tools)
+
         self._engine = ReActEngine(
             llm=default_llm,
             tools=tools,
@@ -215,6 +255,7 @@ class NexusAgent:
             window_manager=window_manager,
             anti_compression=self._anti_compression,
             completeness_validator=self._completeness,
+            recovery_engine=self._recovery_engine,
         )
 
         # 混合记忆系统（v4.0+）
@@ -223,6 +264,9 @@ class NexusAgent:
             db_path=self._config.memory.db_path,
             encryption=self._encryption,
         )
+
+        # v4.0+ 启动时数据完整性检查
+        await self._startup_health_check()
 
         # AgentSwarm 多智能体编排（v4.0+）
         from nexusagent.agents.swarm import AgentSwarm
@@ -337,7 +381,50 @@ class NexusAgent:
         self._channel_adapters: Dict[str, Any] = {}
         self._init_channel_adapters()
 
-        logging.info("NexusAgent v4.0+ initialized (Anti-Laziness + Profile + MiroFish + Orchestrator)")
+        # v4.0+ 自我进化引擎（可选，默认 notify 模式）
+        try:
+            from nexusagent.evolution.engine import EvolutionEngine
+            from nexusagent.benchmark.runner import BenchmarkRunner
+            from nexusagent.evolution.strategies import (
+                PromptOptimizationStrategy,
+                ToolMappingStrategy,
+                BudgetTuningStrategy,
+            )
+            evolution_mode = getattr(self._config, "evolution_mode", "notify")
+            if evolution_mode != "off":
+                self._evolution = EvolutionEngine(
+                    config_dir=str(Path.home() / ".nexusagent" / "evolution"),
+                    benchmark_runner=BenchmarkRunner(),
+                    mode=evolution_mode,
+                    cooldown_seconds=21600.0,  # 6 小时冷却期
+                )
+                self._evolution.register_strategy(PromptOptimizationStrategy())
+                self._evolution.register_strategy(ToolMappingStrategy())
+                self._evolution.register_strategy(BudgetTuningStrategy())
+                logging.info("EvolutionEngine 已启用 (mode=%s)", evolution_mode)
+        except Exception as e:
+            logging.debug("EvolutionEngine 初始化失败 (可忽略): %s", e)
+            self._evolution = None
+
+        # v4.0+ 严谨执行模式初始化
+        try:
+            from nexusagent.execution.strict_mode import StrictExecutionWorkflow
+            self._strict_detector = StrictModeDetector()
+            self._strict_workflow = StrictExecutionWorkflow(
+                llm_backend=default_llm,
+                tool_registry=tools,
+                deliberation=self._deliberation if self._config.strict.enable_deliberation else None,
+                reflexion=self._reflexion,
+                max_clarify_rounds=self._config.strict.max_clarify_rounds,
+                max_retry_attempts=self._config.strict.max_retry_attempts,
+            )
+            logging.info("StrictExecutionWorkflow 已初始化 (mode=%s)", self._config.strict.mode)
+        except Exception as e:
+            logging.debug("StrictExecutionWorkflow 初始化失败 (可忽略): %s", e)
+            self._strict_detector = None
+            self._strict_workflow = None
+
+        logging.info("NexusAgent v4.0+ initialized (Anti-Laziness + Profile + MiroFish + Orchestrator + StrictMode)")
 
     def _init_channel_adapters(self) -> None:
         """根据配置初始化多通道适配器"""
@@ -498,40 +585,199 @@ class NexusAgent:
         if self._audit_logger:
             self._audit_logger.log("message_received", f"user={user_id}, model={getattr(selected_llm, '_model', 'default')}, len={len(message)}")
 
-        # 4. 使用 Orchestrator 处理完整流程
+        # 4. v4.0+ 严谨执行模式路由
+        strict_result = await self._try_strict_mode(user_id, message, session_id)
+        if strict_result is not None:
+            self._set_cached_response(user_id, message, session_id, strict_result)
+            if self._dream:
+                self._trigger_dream_on_idle(user_id)
+            return strict_result
+
+        # 5. 使用 Orchestrator 处理完整流程（常规 ReAct 模式）
         result = await self._orchestrator.process(
             user_id=user_id,
             message=message,
             session_id=session_id,
         )
 
-        # 5. 缓存响应
+        # 6. 缓存响应
         self._set_cached_response(user_id, message, session_id, result.answer)
 
-        # 6. DreamEngine 空闲自动触发（v4.0+ 画像后台加工）
-        self._message_count += 1
-        if self._dream and self._message_count >= self._dream_trigger_interval:
-            self._message_count = 0
-            try:
-                asyncio.create_task(self._trigger_dream(user_id))
-            except Exception as e:
-                logging.debug("DreamEngine 自动触发失败 (可忽略): %s", e)
+        # 7. DreamEngine 空闲自动触发（v4.0+ 画像后台加工）
+        if self._dream:
+            self._trigger_dream_on_idle(user_id)
 
         return result.answer
+
+    async def _try_strict_mode(
+        self,
+        user_id: str,
+        message: str,
+        session_id: str,
+    ) -> Optional[str]:
+        """
+        尝试以严谨执行模式处理消息
+
+        返回:
+            str: 严谨模式生成的报告（Markdown）或澄清提示
+            None: 不满足严谨模式条件，回退到常规 ReAct 模式
+        """
+        if not self._strict_detector or not self._strict_workflow:
+            return None
+
+        mode = self._config.strict.mode
+        if mode == "chat":
+            return None  # 强制对话模式
+
+        detection = self._strict_detector.detect(message)
+        if mode == "strict":
+            detection.mode = "strict"  # 强制严谨模式
+
+        if detection.mode != "strict":
+            return None  # 自动检测判定为对话模式
+
+        logger = logging.getLogger("nexus.main")
+        logger.info("严谨模式激活: reason=%s confidence=%.2f", detection.reason, detection.confidence)
+
+        if self._audit_logger:
+            self._audit_logger.log("strict_mode_activated", f"user={user_id}, reason={detection.reason}")
+
+        # v4.0+: 前置意图分析，若需要澄清则直接返回提示（避免 StateGraph 内部无法暂停等待用户输入）
+        intent = await self._strict_workflow._analyzer.analyze(message)
+        if intent.is_task and not intent.is_clear_enough():
+            questions = intent.suggested_questions or ["能否请您补充更多细节？"]
+            clarify_text = "## 🤔 需求澄清\n\n您的请求有些模糊，为了更准确地帮您完成，请补充以下信息：\n\n"
+            for i, q in enumerate(questions, 1):
+                clarify_text += f"{i}. {q}\n"
+            clarify_text += "\n补充信息后，我将立即为您执行。"
+            logger.info("严谨模式: 需求需要澄清，返回 %d 个问题", len(questions))
+            return clarify_text
+
+        result = await self._strict_workflow.run(message, session_id=session_id)
+
+        if result.get("mode") == "chat":
+            logger.info("严谨模式判定为对话请求，回退到常规模式")
+            return None
+
+        report = result.get("report", "")
+        if not report:
+            report = "## 严谨执行结果\n\n任务已处理，但未生成详细报告。"
+
+        if self._audit_logger:
+            self._audit_logger.log(
+                "strict_mode_completed",
+                f"user={user_id}, success={result.get('success')}, elapsed={result.get('elapsed_seconds', 0):.1f}s",
+            )
+
+        return report
+
+    def _trigger_dream_on_idle(self, user_id: str) -> None:
+        """
+        空闲时触发 DreamEngine 梦境周期
+
+        设计:
+            1. 用户发消息时 mark_active()，取消之前的后台等待
+            2. 启动后台协程：等待空闲阈值（默认 30s）
+            3. 如果期间用户再次发消息，后台协程被取消
+            4. 如果确实空闲了，执行 dream_cycle（内部会检查 pending_traits，空则立即返回）
+        """
+        if self._idle_detector is None:
+            from nexusagent.execution.idle_detector import IdleDetector
+            self._idle_detector = IdleDetector(idle_seconds=30.0)
+
+        self._idle_detector.mark_active()
+
+        async def _wait_and_trigger() -> None:
+            try:
+                # 等待空闲阈值
+                await asyncio.sleep(self._idle_detector._idle_threshold)
+                if not self._idle_detector.is_idle():
+                    return  # 期间用户又活跃了
+                # 真正空闲，触发 dream_cycle
+                await self._trigger_dream(user_id)
+            except asyncio.CancelledError:
+                logging.debug("DreamEngine 后台等待被取消（用户重新活跃）")
+            except Exception as e:
+                logging.debug("DreamEngine 空闲触发失败 (可忽略): %s", e)
+
+        task = asyncio.create_task(_wait_and_trigger())
+        self._idle_detector.set_background_task(task)
 
     async def _trigger_dream(self, user_id: str) -> None:
         """后台触发 DreamEngine 梦境周期 — v4.0+"""
         try:
             report = await self._dream.dream_cycle(user_id)
-            logging.debug(
-                "DreamEngine: %s 完成梦境周期 — merged=%d rejected=%d staled=%d",
-                user_id,
-                report.traits_merged,
-                report.traits_rejected,
-                report.traits_staled,
-            )
+            if report.traits_merged > 0 or report.traits_rejected > 0 or report.traits_staled > 0:
+                logging.info(
+                    "DreamEngine: %s 完成梦境周期 — merged=%d rejected=%d staled=%d elapsed=%.1fms",
+                    user_id,
+                    report.traits_merged,
+                    report.traits_rejected,
+                    report.traits_staled,
+                    report.elapsed_ms,
+                )
+            else:
+                logging.debug(
+                    "DreamEngine: %s 无待处理画像条目，跳过",
+                    user_id,
+                )
         except Exception as e:
             logging.debug("DreamEngine 梦境周期失败 (可忽略): %s", e)
+
+    async def _startup_health_check(self) -> None:
+        """启动时数据完整性检查 — v4.0+ 生产级保障"""
+        import shutil
+        from pathlib import Path
+
+        checks = []
+
+        # 1. 检查 SQLite 数据库可读写
+        try:
+            db_path = Path(self._config.memory.db_path)
+            if db_path.exists():
+                health = await self._hybrid_memory.health_check()
+                checks.append(("memory_db", health["status"] == "healthy"))
+                if health["status"] != "healthy":
+                    logging.warning("记忆数据库完整性异常: %s", health.get("integrity"))
+            else:
+                checks.append(("memory_db", True))  # 新数据库会自动创建
+        except Exception as e:
+            checks.append(("memory_db", False))
+            logging.warning("记忆数据库健康检查失败: %s", e)
+
+        # 2. 检查 ChromaDB 可访问
+        try:
+            from nexusagent.memory.vector_store import ChromaVectorStore
+            store = ChromaVectorStore()
+            checks.append(("chroma_db", store.is_available()))
+        except Exception as e:
+            checks.append(("chroma_db", False))
+            logging.warning("ChromaDB 检查失败: %s", e)
+
+        # 3. 检查 uploads 目录
+        uploads_dir = Path("uploads")
+        uploads_dir.mkdir(exist_ok=True)
+        checks.append(("uploads_dir", uploads_dir.exists() and os.access(uploads_dir, os.W_OK)))
+
+        # 4. 检查磁盘空间
+        try:
+            stat = shutil.disk_usage(".")
+            free_gb = stat.free / (1024 ** 3)
+            checks.append(("disk_space", free_gb > 1.0))
+            if free_gb < 1.0:
+                logging.warning("磁盘空间不足: %.1f GB 剩余", free_gb)
+        except Exception:
+            checks.append(("disk_space", True))
+
+        # 5. 检查备份目录
+        backup_dir = Path(os.environ.get("NEXUS_BACKUP_DIR", "./backups"))
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        checks.append(("backup_dir", backup_dir.exists()))
+
+        ok = sum(1 for _, passed in checks if passed)
+        total = len(checks)
+        logging.info("启动健康检查: %d/%d 通过 (%s)", ok, total,
+                     ", ".join(f"{name}={'OK' if passed else 'FAIL'}" for name, passed in checks))
 
     def reload_llm(self, provider: str, model: str) -> None:
         """运行时热切换 LLM Backend — v0.1.0 多模型版"""
@@ -546,6 +792,11 @@ class NexusAgent:
             logging.info("LLM hot-swapped: provider=%s model=%s", provider, model)
         else:
             logging.warning("Engine not initialized, cannot hot-swap LLM")
+
+    @property
+    def current_llm(self) -> Any:
+        """获取当前使用的 LLM Backend（供 WebAdapter 流式输出使用）"""
+        return self._engine._llm if self._engine else None
 
     async def shutdown(self) -> None:
         """优雅关闭"""

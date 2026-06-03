@@ -1,0 +1,161 @@
+# NexusAgent v4.0+ — 生产级 Docker Compose 配置
+# 用法: docker-compose -f docker-compose.prod.yml up -d
+#
+# 与开发版区别:
+#   - 资源限制 (CPU/内存)
+#   - 日志轮转 (100MB * 5)
+#   - 优雅关闭 (SIGTERM, 30s)
+#   - 数据卷独立持久化
+#   - 非 root 用户运行
+
+version: "3.9"
+
+services:
+  nexusagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexusagent:latest
+    container_name: nexusagent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NEXUS_DEBUG=false
+      - NEXUS_HOME=/app/data
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    env_file:
+      - .env.production
+    volumes:
+      - nexusagent_data:/app/data
+      - nexusagent_uploads:/app/uploads
+      - nexusagent_chroma:/app/chroma_db
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service_name,environment"
+    stop_grace_period: 30s
+    networks:
+      - nexusagent_net
+    depends_on:
+      redis:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexusagent_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - nexusagent_net
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: nexusagent_searxng
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - BASE_URL=http://localhost:8081/
+      - INSTANCE_NAME=NexusAgent-SearXNG
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - nexusagent_net
+
+  # 可选: 监控 (Prometheus + Grafana)
+  # 取消注释以下部分启用监控
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: nexusagent_prometheus
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus_data:/prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - nexusagent_net
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: nexusagent_grafana
+  #   restart: unless-stopped
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #     - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+  #     - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   networks:
+  #     - nexusagent_net
+
+volumes:
+  nexusagent_data:
+    driver: local
+  nexusagent_uploads:
+    driver: local
+  nexusagent_chroma:
+    driver: local
+  redis_data:
+    driver: local
+  # prometheus_data:
+  #   driver: local
+  # grafana_data:
+  #   driver: local
+
+networks:
+  nexusagent_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

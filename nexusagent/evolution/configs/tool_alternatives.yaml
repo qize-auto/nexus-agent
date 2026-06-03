@@ -1,0 +1,40 @@
+# NexusAgent v4.0+ — 错误恢复工具替代映射
+# 该文件可被进化系统修改，但绝不修改对应的 .py 文件
+#
+# 格式:
+#   tool_name:
+#     - tool: alternative_tool_name
+#       condition: failure_condition
+#       arg_transform: transform_function_name
+
+tool_alternatives:
+  browser.visit:
+    - tool: search.web
+      condition: domain_unreachable
+      arg_transform: extract_domain_keyword
+
+  file.read:
+    - tool: file.list
+      condition: file_not_found
+      arg_transform: dirname_fallback
+
+  search.web:
+    - tool: browser.visit
+      condition: looks_like_url
+      arg_transform: query_to_url
+
+  rag.retrieve:
+    - tool: search.web
+      condition: no_results
+      arg_transform: passthrough
+
+param_fixers:
+  file.read:
+    - condition: path_unsafe
+      description: 路径包含 .. 时修正为 basename
+    - condition: path_out_of_scope
+      description: 路径超出项目范围时修正为相对路径
+
+  search.web:
+    - condition: query_too_short
+      description: 查询词少于 3 个字符时扩展

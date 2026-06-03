@@ -37,7 +37,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from nexusagent.utils.retry import exponential_backoff
 
@@ -108,6 +108,16 @@ _BUILTIN_PROVIDERS: Dict[str, ProviderConfig] = {
         cost_per_1k_prompt=0.012,
         cost_per_1k_completion=0.012,
         region="domestic",
+    ),
+    "ollama": ProviderConfig(
+        name="ollama",
+        display_name="Ollama (Local)",
+        base_url="http://localhost:11434/v1",
+        api_key_env="OLLAMA_API_KEY",
+        default_model="llama3.2",
+        cost_per_1k_prompt=0.0,
+        cost_per_1k_completion=0.0,
+        region="local",
     ),
     "qwen": ProviderConfig(
         name="qwen",
@@ -383,6 +393,51 @@ class UnifiedLLMBackend:
             return await self._complete_openai_sdk(messages, tools, temp, max_tok)
         else:
             return await self._complete_aiohttp(messages, tools, temp, max_tok)
+
+    async def complete_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> AsyncIterator[str]:
+        """
+        流式 completion 接口 — 逐 token 返回文本
+        使用 openai SDK stream 模式（兼容所有 OpenAI-compatible API）
+        """
+        temp = temperature if temperature is not None else self._temperature
+        max_tok = max_tokens if max_tokens is not None else self._config.max_tokens_default
+
+        try:
+            import openai
+        except ImportError:
+            yield "[NexusAgent] openai SDK not installed. pip install openai"
+            return
+
+        client = openai.AsyncOpenAI(
+            api_key=self._api_key,
+            base_url=self._base_url or None,
+            timeout=self._timeout,
+        )
+
+        kwargs: Dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": temp,
+            "max_tokens": max_tok,
+            "stream": True,
+        }
+
+        try:
+            stream = await client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta and delta.content:
+                    yield delta.content
+        except Exception as e:
+            logger.warning("stream error for %s: %s", self._provider_name, e)
+            yield f"\n[Stream Error: {e}]"
+        finally:
+            await client.close()
 
     # ── litellm 策略 ──
 

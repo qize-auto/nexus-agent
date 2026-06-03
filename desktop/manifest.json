@@ -1,0 +1,24 @@
+{
+  "name": "NexusAgent",
+  "short_name": "NexusAgent",
+  "description": "本地优先的 AI 助手 — 支持本地 LLM、搜索、文件分析",
+  "start_url": "/desktop/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/desktop/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/desktop/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "ai", "utilities"],
+  "lang": "zh-CN"
+}

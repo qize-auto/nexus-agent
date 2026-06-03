@@ -1,0 +1,25 @@
+# NexusAgent v4.0+ — 模型路由规则
+# 该文件可被进化系统修改，但绝不修改对应的 .py 文件
+#
+# 格式:
+#   routing_rules:
+#     - pattern: "regex_pattern"
+#       model: "provider/model_name"
+#       priority: 1
+
+routing_rules:
+  - pattern: "coding|programming|debug|code review"
+    model: "deepseek/deepseek-chat"
+    priority: 1
+
+  - pattern: "long_document|summarize|analyze.*long"
+    model: "deepseek/deepseek-v4-pro"
+    priority: 2
+
+  - pattern: "quick|simple|greeting|hello"
+    model: "openai/gpt-4o-mini"
+    priority: 10
+
+  - pattern: "privacy|confidential|private"
+    model: "local"
+    priority: 1

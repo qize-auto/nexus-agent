@@ -418,6 +418,19 @@ class HybridMemory:
 
         return await self._store._run_sync(_stats)
 
+    async def health_check(self) -> Dict[str, Any]:
+        """记忆系统健康检查"""
+        store_health = await self._store.health_check()
+        stats = await self.stats()
+        return {
+            "status": "healthy" if store_health["integrity"] == "ok" else "degraded",
+            "integrity": store_health["integrity"],
+            "memory_count": stats["total"],
+            "core_blocks": stats["core_blocks"],
+            "db_size_bytes": store_health["db_size_bytes"],
+            "vector_search_available": store_health["vec_available"],
+        }
+
     async def close(self) -> None:
         """关闭资源"""
-        await self._store.close()
+        self._store.close()
