@@ -14,6 +14,270 @@
   const STORAGE_KEY = 'nexus_sessions_v3';
   const STORAGE_THEME = 'nexus_theme';
   const MAX_SESSIONS = 50;
+  const STORAGE_LANG = 'nexus_lang';
+
+  // ═══════════════════════════════════════════════
+  // 国际化 (I18N)
+  // ═══════════════════════════════════════════════
+
+  const I18N = {
+    en: {
+      'sidebar.new_chat': 'New Chat',
+      'sidebar.diagnostics': 'Diagnostics',
+      'sidebar.settings': 'Settings',
+      'topbar.toggle_sidebar': 'Collapse/Expand Sidebar',
+      'topbar.clear_chat': 'Clear Chat',
+      'welcome.subtitle': 'Local-first Personal Agent System',
+      'welcome.card_qa_title': 'Smart Q&A',
+      'welcome.card_qa_desc': 'Natural language understanding & generation powered by LLMs',
+      'welcome.card_privacy_title': 'Privacy Protection',
+      'welcome.card_privacy_desc': 'Local data storage with automatic PII redaction',
+      'welcome.card_tools_title': 'Tool Invocation',
+      'welcome.card_tools_desc': 'Code execution, file analysis, web requests',
+      'input.placeholder': 'Message NexusAgent…',
+      'input.hint': 'Enter to send · Shift+Enter newline · 📎 Upload file',
+      'settings.title': 'Settings',
+      'settings.interface': 'Interface',
+      'settings.language': 'Language',
+      'settings.theme': 'Theme',
+      'settings.provider': 'Model Provider',
+      'settings.model': 'Model',
+      'settings.api_key': 'API Key',
+      'settings.show_hide': 'Show/Hide',
+      'settings.api_key_hint': 'Leave empty to use .env configuration',
+      'settings.ollama_host': 'Ollama Host',
+      'settings.ollama_hint': 'Only applies when using Ollama',
+      'settings.security': 'Security',
+      'settings.diagnostics': 'Diagnostics',
+      'settings.save': 'Save',
+      'provider.ollama': 'Ollama (Local)',
+      'provider.moonshot': 'Moonshot',
+      'provider.deepseek': 'DeepSeek',
+      'provider.openai': 'OpenAI',
+      'badge.input_sanitization': 'Input Sanitization',
+      'badge.pii_redaction': 'PII Redaction',
+      'theme.dark': 'Dark',
+      'theme.light': 'Light',
+      'theme.system': 'System',
+      'diag.title': 'Diagnostics',
+      'diag.auto_refresh': 'Auto-refresh',
+      'diag.system_health': 'System Health',
+      'diag.health_dashboard': 'Health Dashboard',
+      'diag.health_desc': 'Backend health, metrics, security status',
+      'diag.run': 'Run',
+      'diag.connectivity_test': 'Connectivity Test',
+      'diag.connectivity_desc': 'Tool registry & module import checks',
+      'diag.module_status': 'Module Status',
+      'diag.module_desc': 'Core module availability report',
+      'diag.analysis': 'Analysis',
+      'diag.audit_viewer': 'Audit Viewer',
+      'diag.audit_desc': 'Security events & execution traces',
+      'diag.ux_advisor': 'UX Advisor',
+      'diag.ux_desc': 'Configuration UX analysis',
+      'diag.compare': 'Compare',
+      'diag.design_diff': '🎨 Design Diff',
+      'diag.baseline_placeholder': 'Baseline design spec…',
+      'diag.current_placeholder': 'Current design spec…',
+      'diag.compare_btn': 'Compare',
+      'diag.competitor_analysis': '🏆 Competitor Analysis',
+      'diag.competitor_name': 'Competitor name',
+      'diag.ours_placeholder': 'Our features (one per line)…',
+      'diag.theirs_placeholder': 'Competitor features (one per line)…',
+      'diag.analyze_btn': 'Analyze',
+      'diag.alerts': 'Alerts',
+      'diag.load': 'Load',
+      'diag.export': 'Export',
+      'diag.export_btn': 'Export',
+      'diag.history': 'History',
+      'filter.all': 'All',
+      'filter.critical': 'Critical',
+      'filter.error': 'Error',
+      'filter.warning': 'Warning',
+      'filter.info': 'Info',
+      'format.markdown': 'Markdown',
+      'format.json': 'JSON',
+      'loading.connecting': 'Connecting to backend…',
+      'session.empty': 'No conversations yet',
+      'session.confirm_delete': 'Delete this conversation?',
+      'session.welcome': 'Welcome',
+      'session.new_chat': 'New Chat',
+      'status.thinking': 'Thinking…',
+      'status.ready': 'Ready',
+      'status.offline': 'Offline',
+      'status.error': 'Error',
+      'upload.uploading': 'Uploading…',
+      'upload.converted': 'File converted',
+      'upload.ready': 'is ready',
+      'upload.failed': 'Upload failed',
+      'upload.too_large': 'File too large',
+      'upload.size_limit': 'Max 20MB per file',
+      'action.copy': 'Copy',
+      'action.copied': 'Copied',
+      'error.request_failed': 'Request failed',
+      'error.connection_failed': 'Connection failed',
+      'error.network': 'Network error',
+      'error.unknown': 'Unknown error',
+      'error.generic': 'Error',
+      'settings.saved': 'Config saved',
+      'settings.save_failed': 'Save failed',
+      'avatar.user': 'Me',
+      'alert.dismiss': 'Dismiss',
+    },
+    zh: {
+      'sidebar.new_chat': '新对话',
+      'sidebar.diagnostics': '诊断',
+      'sidebar.settings': '设置',
+      'topbar.toggle_sidebar': '收起/展开边栏',
+      'topbar.clear_chat': '清空对话',
+      'welcome.subtitle': '本地优先的个人智能体系统',
+      'welcome.card_qa_title': '智能问答',
+      'welcome.card_qa_desc': '基于大模型的自然语言理解与生成',
+      'welcome.card_privacy_title': '隐私保护',
+      'welcome.card_privacy_desc': '数据本地存储，PII 自动脱敏',
+      'welcome.card_tools_title': '工具调用',
+      'welcome.card_tools_desc': '代码执行、文件分析、网络请求',
+      'input.placeholder': '发送消息给 NexusAgent…',
+      'input.hint': 'Enter 发送 · Shift+Enter 换行 · 📎 上传文件',
+      'settings.title': '设置',
+      'settings.interface': '界面',
+      'settings.language': '语言',
+      'settings.theme': '主题',
+      'settings.provider': '模型提供商',
+      'settings.model': '模型',
+      'settings.api_key': 'API Key',
+      'settings.show_hide': '显示/隐藏',
+      'settings.api_key_hint': '留空则使用 .env 文件中的配置',
+      'settings.ollama_host': 'Ollama 主机地址',
+      'settings.ollama_hint': '仅在使用 Ollama 时生效',
+      'settings.security': '安全状态',
+      'settings.diagnostics': '诊断配置',
+      'settings.save': '保存配置',
+      'provider.ollama': 'Ollama (本地)',
+      'provider.moonshot': 'Moonshot (月之暗面)',
+      'provider.deepseek': 'DeepSeek',
+      'provider.openai': 'OpenAI',
+      'badge.input_sanitization': '输入消毒',
+      'badge.pii_redaction': 'PII 脱敏',
+      'theme.dark': '深色',
+      'theme.light': '浅色',
+      'theme.system': '跟随系统',
+      'diag.title': 'Diagnostics',
+      'diag.auto_refresh': '自动刷新',
+      'diag.system_health': '系统健康',
+      'diag.health_dashboard': '健康看板',
+      'diag.health_desc': '后端健康、指标、安全状态',
+      'diag.run': '运行',
+      'diag.connectivity_test': '连接测试',
+      'diag.connectivity_desc': '工具注册表与模块导入检查',
+      'diag.module_status': '模块状态',
+      'diag.module_desc': '核心模块可用性报告',
+      'diag.analysis': '分析',
+      'diag.audit_viewer': '审计查看器',
+      'diag.audit_desc': '安全事件与执行追踪',
+      'diag.ux_advisor': 'UX 顾问',
+      'diag.ux_desc': '配置 UX 分析',
+      'diag.compare': '对比',
+      'diag.design_diff': '🎨 设计对比',
+      'diag.baseline_placeholder': '基线设计规范…',
+      'diag.current_placeholder': '当前设计规范…',
+      'diag.compare_btn': '对比',
+      'diag.competitor_analysis': '🏆 竞品分析',
+      'diag.competitor_name': '竞品名称',
+      'diag.ours_placeholder': '我们的功能（每行一个）…',
+      'diag.theirs_placeholder': '竞品功能（每行一个）…',
+      'diag.analyze_btn': '分析',
+      'diag.alerts': '告警',
+      'diag.load': '加载',
+      'diag.export': '导出',
+      'diag.export_btn': '导出',
+      'diag.history': '历史',
+      'filter.all': '全部',
+      'filter.critical': '严重',
+      'filter.error': '错误',
+      'filter.warning': '警告',
+      'filter.info': '信息',
+      'format.markdown': 'Markdown',
+      'format.json': 'JSON',
+      'loading.connecting': '正在连接后端服务…',
+      'session.empty': '暂无对话',
+      'session.confirm_delete': '确定删除此对话？',
+      'session.welcome': '欢迎',
+      'session.new_chat': '新对话',
+      'status.thinking': '思考中…',
+      'status.ready': '就绪',
+      'status.offline': '离线',
+      'status.error': '出错',
+      'upload.uploading': '上传中…',
+      'upload.converted': '文件已转换',
+      'upload.ready': '已准备就绪',
+      'upload.failed': '上传失败',
+      'upload.too_large': '文件过大',
+      'upload.size_limit': '单文件上限 20MB',
+      'action.copy': '复制',
+      'action.copied': '已复制',
+      'error.request_failed': '请求失败',
+      'error.connection_failed': '连接失败',
+      'error.network': '网络错误',
+      'error.unknown': '未知错误',
+      'error.generic': '错误',
+      'settings.saved': '配置已保存并生效',
+      'settings.save_failed': '保存失败',
+      'avatar.user': '我',
+      'alert.dismiss': '关闭',
+    }
+  };
+
+  let currentLang = localStorage.getItem(STORAGE_LANG) || (navigator.language.startsWith('zh') ? 'zh' : 'en');
+
+  function t(key, fallback) {
+    const dict = I18N[currentLang] || I18N.en;
+    return dict[key] !== undefined ? dict[key] : (fallback !== undefined ? fallback : key);
+  }
+
+  function applyLang() {
+    // 翻译 data-i18n 元素
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const translated = t(key);
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = translated;
+      } else {
+        el.textContent = translated;
+      }
+    });
+    // 翻译 title
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      el.title = t(key);
+    });
+    // 翻译 placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      el.placeholder = t(key);
+    });
+    // 翻译 option 标签
+    document.querySelectorAll('option[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      el.textContent = t(key);
+    });
+    // 更新 lang 属性
+    document.documentElement.setAttribute('lang', currentLang === 'zh' ? 'zh-CN' : 'en');
+  }
+
+  function initLang() {
+    const sel = $('#setting-lang');
+    if (sel) sel.value = currentLang;
+    applyLang();
+  }
+
+  function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem(STORAGE_LANG, lang);
+    applyLang();
+    // 重新渲染动态内容
+    renderSessionList();
+    renderMessages();
+  }
 
   const ENV = {
     isElectron: !!window.nexusDesktop,
@@ -45,6 +309,7 @@
   // ═══════════════════════════════════════════════
 
   function init() {
+    initLang();
     initTheme();
     initPyQtBridge();
     loadSessions();
@@ -178,7 +443,7 @@
     } catch (e) { console.error('saveSessions failed:', e); }
   }
 
-  function createSession(title = '新对话') {
+  function createSession(title = t('session.new_chat')) {
     const id = 'ses_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
     const session = { id, title, createdAt: Date.now(), messages: [] };
     sessions.unshift(session);
@@ -199,7 +464,7 @@
 
   function ensureWelcomeSession() {
     if (sessions.length === 0) {
-      const s = createSession('欢迎');
+      const s = createSession(t('session.welcome'));
       activeSessionId = s.id;
     } else if (!activeSessionId || !sessions.find(s => s.id === activeSessionId)) {
       activeSessionId = sessions[0].id;
@@ -209,7 +474,7 @@
   function renameSessionFromFirstMessage(sessionId, text) {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
-    if (session.title === '新对话' || session.title === '欢迎') {
+    if (session.title === t('session.new_chat') || session.title === t('session.welcome')) {
       const t = text.trim().slice(0, 24);
       session.title = t + (text.length > 24 ? '…' : '');
       saveSessions();
@@ -226,7 +491,7 @@
     if (!list) return;
     list.innerHTML = '';
     if (sessions.length === 0) {
-      list.innerHTML = '<div class="session-empty">暂无对话</div>';
+      list.innerHTML = '<div class="session-empty">' + t('session.empty') + '</div>';
       return;
     }
     sessions.forEach(s => {
@@ -240,7 +505,7 @@
       el.addEventListener('click', (e) => {
         if (e.target.classList.contains('session-del')) {
           e.stopPropagation();
-          if (confirm('确定删除此对话？')) deleteSession(s.id);
+          if (confirm(t('session.confirm_delete'))) deleteSession(s.id);
         } else {
           activeSessionId = s.id;
           renderSessionList();
@@ -318,7 +583,7 @@
     if (role === 'system') {
       row.innerHTML = `<div class="msg-system-inner">${escapeHtml(text)}</div>`;
     } else {
-      const avatarText = role === 'user' ? '我' : 'N';
+      const avatarText = role === 'user' ? t('avatar.user') : 'N';
       const bubbleHTML = role === 'agent' ? renderMarkdown(text) : escapeHtml(text);
       row.innerHTML = `
         <div class="msg-inner">
@@ -439,8 +704,8 @@
     const text = code.textContent;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
-        btn.textContent = '已复制';
-        setTimeout(() => btn.textContent = '复制', 2000);
+        btn.textContent = t('action.copied');
+        setTimeout(() => btn.textContent = t('action.copy'), 2000);
       });
     } else {
       // fallback
@@ -450,8 +715,8 @@
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      btn.textContent = '已复制';
-      setTimeout(() => btn.textContent = '复制', 2000);
+      btn.textContent = t('action.copied');
+      setTimeout(() => btn.textContent = t('action.copy'), 2000);
     }
   };
 
@@ -492,11 +757,11 @@
 
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) {
-      showAlertToast('warning', '文件过大', '单文件上限 20MB');
+      showAlertToast('warning', t('upload.too_large'), t('upload.size_limit'));
       return;
     }
 
-    if (filenameEl) filenameEl.textContent = '上传中… ' + file.name;
+    if (filenameEl) filenameEl.textContent = t('upload.uploading') + ' ' + file.name;
     if (previewEl) previewEl.classList.remove('hidden');
 
     const formData = new FormData();
@@ -512,19 +777,19 @@
         uploadedFileText = data.text || '';
         uploadedFileName = data.filename || file.name;
         if (filenameEl) filenameEl.textContent = '📎 ' + uploadedFileName;
-        showAlertToast('info', '文件已转换', uploadedFileName + ' 已准备就绪');
+        showAlertToast('info', t('upload.converted'), uploadedFileName + ' ' + t('upload.ready'));
       } else {
         uploadedFileText = '';
         uploadedFileName = '';
         if (filenameEl) filenameEl.textContent = '';
         if (previewEl) previewEl.classList.add('hidden');
-        showAlertToast('error', '上传失败', data.error || '未知错误');
+        showAlertToast('error', t('upload.failed'), data.error || t('error.unknown'));
       }
     } catch (e) {
       uploadedFileText = '';
       uploadedFileName = '';
       if (previewEl) previewEl.classList.add('hidden');
-      showAlertToast('error', '上传失败', e.message || '网络错误');
+      showAlertToast('error', t('upload.failed'), e.message || t('error.network'));
     }
   }
 
@@ -556,7 +821,7 @@
 
     isProcessing = true;
     showTyping();
-    updateStatus('thinking', '思考中…');
+    updateStatus('thinking', t('status.thinking'));
 
     try {
       if (ENV.isPyQt6) {
@@ -582,16 +847,16 @@
             window.nexusDesktop.notify('NexusAgent', '收到新消息');
           }
         } else {
-          addMessage('system', '请求失败: ' + (data.error || '未知错误'));
+          addMessage('system', t('error.request_failed') + ': ' + (data.error || t('error.unknown')));
         }
-        updateStatus('idle', '就绪');
+        updateStatus('idle', t('status.ready'));
         isProcessing = false;
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
         hideTyping();
-        addMessage('system', '连接失败: ' + (err.message || '网络错误'));
-        updateStatus('error', '离线');
+        addMessage('system', t('error.connection_failed') + ': ' + (err.message || t('error.network')));
+        updateStatus('error', t('status.offline'));
       }
       isProcessing = false;
     }
@@ -606,21 +871,21 @@
 
   async function checkBackendHealth() {
     if (ENV.isPyQt6) {
-      updateStatus('idle', '就绪');
+      updateStatus('idle', t('status.ready'));
       return;
     }
     try {
       const res = await fetch(API_BASE + '/health', { method: 'GET' });
       const data = await res.json();
       if (data.ok) {
-        updateStatus('idle', '就绪');
+        updateStatus('idle', t('status.ready'));
         const modelEl = $('#current-model');
         if (modelEl && data.model) modelEl.textContent = data.model;
       } else {
-        updateStatus('error', '未就绪');
+        updateStatus('error', t('status.error'));
       }
     } catch {
-      updateStatus('error', '离线');
+      updateStatus('error', t('status.offline'));
     }
   }
 
@@ -639,12 +904,12 @@
     addAgentMessage(text) {
       hideTyping();
       addMessage('agent', text);
-      updateStatus('idle', '就绪');
+      updateStatus('idle', t('status.ready'));
       isProcessing = false;
     },
     addError(text) {
       hideTyping();
-      addMessage('system', '错误: ' + text);
+      addMessage('system', t('error.generic') + ': ' + text);
       updateStatus('error', '出错');
       isProcessing = false;
     },
@@ -706,7 +971,7 @@
     const ollamaHost = provider === 'ollama' ? ($('#setting-ollama-host')?.value || 'http://localhost:11434') : '';
     const payload = JSON.stringify({ provider, model, api_key: apiKey, ollama_host: ollamaHost });
 
-    if (statusEl) { statusEl.textContent = '正在保存…'; statusEl.className = 'save-status'; }
+    if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'save-status'; }
 
     try {
       let data;
@@ -728,16 +993,16 @@
       }
 
       if (data.ok) {
-        if (statusEl) { statusEl.textContent = '✓ 配置已保存并生效'; statusEl.className = 'save-status ok'; }
+        if (statusEl) { statusEl.textContent = '✓ ' + t('settings.saved'); statusEl.className = 'save-status ok'; }
         const modelEl = $('#current-model');
         if (modelEl) modelEl.textContent = model;
         const apiInput = $('#setting-apikey');
         if (apiInput) apiInput.value = '';
       } else {
-        if (statusEl) { statusEl.textContent = '✗ ' + (data.error || '保存失败'); statusEl.className = 'save-status err'; }
+        if (statusEl) { statusEl.textContent = '✗ ' + (data.error || t('settings.save_failed')); statusEl.className = 'save-status err'; }
       }
     } catch (e) {
-      if (statusEl) { statusEl.textContent = '✗ 错误: ' + e.message; statusEl.className = 'save-status err'; }
+      if (statusEl) { statusEl.textContent = '✗ ' + t('error.generic') + ': ' + e.message; statusEl.className = 'save-status err'; }
     }
   }
 
@@ -861,7 +1126,7 @@
       const data = await res.json();
       renderDiagnosticResult(type, data);
     } catch (e) {
-      addMessage('system', 'Diagnostic failed: ' + (e.message || 'Network error'));
+      addMessage('system', 'Diagnostic failed: ' + (e.message || t('error.network')));
     } finally {
       if (btn) { btn.textContent = originalText; btn.disabled = false; }
     }
@@ -869,7 +1134,7 @@
 
   function renderDiagnosticResult(type, data) {
     if (!data.ok) {
-      addMessage('system', 'Diagnostic error: ' + (data.error || 'Unknown error'));
+      addMessage('system', 'Diagnostic error: ' + (data.error || t('error.unknown')));
       return;
     }
     let html = '';
@@ -1283,7 +1548,7 @@
         downloadFile('nexusagent-diagnostic-report.json', JSON.stringify(results, null, 2), 'application/json');
       }
     } catch (e) {
-      addMessage('system', 'Export failed: ' + (e.message || 'Network error'));
+      addMessage('system', 'Export failed: ' + (e.message || t('error.network')));
     } finally {
       if (btn) { btn.textContent = 'Export'; btn.disabled = false; }
     }
@@ -1341,7 +1606,7 @@
       const data = await res.json();
       if (data.ok) {
         const status = $('#save-status');
-        if (status) { status.textContent = '✓ Diagnostics config saved'; status.className = 'save-status ok'; }
+        if (status) { status.textContent = '✓ ' + t('settings.saved'); status.className = 'save-status ok'; }
       }
     } catch (e) {}
   }
@@ -1483,6 +1748,14 @@
     $('#setting-theme').addEventListener('change', (e) => {
       applyTheme(e.target.value);
     });
+
+    // 语言切换
+    const langSel = $('#setting-lang');
+    if (langSel) {
+      langSel.addEventListener('change', (e) => {
+        setLang(e.target.value);
+      });
+    }
 
     // 窗口控制（Electron）
     if (window.nexusDesktop && window.nexusDesktop.send) {

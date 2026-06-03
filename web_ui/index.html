@@ -30,18 +30,18 @@
       </div>
       <button id="btn-new-chat" class="btn-new-chat" title="New Chat">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        <span>新对话</span>
+        <span data-i18n="sidebar.new_chat">New Chat</span>
       </button>
     </div>
     <div id="session-list" class="session-list"></div>
     <div class="sidebar-footer">
       <button id="btn-diagnostics" class="btn-footer">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-        <span>Diagnostics</span>
+        <span data-i18n="sidebar.diagnostics">Diagnostics</span>
       </button>
       <button id="btn-settings" class="btn-footer">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 21 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        <span>Settings</span>
+        <span data-i18n="sidebar.settings">Settings</span>
       </button>
       <div class="theme-toggle" id="btn-theme" title="Toggle Theme">
         <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
@@ -55,7 +55,7 @@
     <!-- 顶部栏 -->
     <header id="topbar">
       <div class="topbar-left">
-        <button id="btn-toggle-sidebar" class="btn-icon" title="Collapse/Expand Sidebar">
+        <button id="btn-toggle-sidebar" class="btn-icon" title="Collapse/Expand Sidebar" data-i18n-title="topbar.toggle_sidebar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <div class="model-info">
@@ -64,7 +64,7 @@
         </div>
       </div>
       <div class="topbar-right">
-        <button id="btn-clear-chat" class="btn-icon" title="Clear Chat">
+        <button id="btn-clear-chat" class="btn-icon" title="Clear Chat" data-i18n-title="topbar.clear_chat">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         </button>
       </div>
@@ -130,23 +130,23 @@
     <div class="drawer-backdrop"></div>
     <div class="drawer-panel">
       <div class="drawer-header">
-        <h3>Settings</h3>
+        <h3 data-i18n="settings.title">Settings</h3>
         <button id="btn-close-drawer" class="btn-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
       <div class="drawer-body">
         <section class="drawer-section">
-          <h4>Model Provider</h4>
+          <h4 data-i18n="settings.provider">Model Provider</h4>
           <select id="setting-provider">
-            <option value="ollama">Ollama (本地)</option>
+            <option value="ollama" data-i18n="provider.ollama">Ollama (Local)</option>
             <option value="moonshot">Moonshot (Moonshot AI)</option>
             <option value="deepseek">DeepSeek</option>
             <option value="openai">OpenAI</option>
           </select>
         </section>
         <section class="drawer-section">
-          <h4>Model</h4>
+          <h4 data-i18n="settings.model">Model</h4>
           <select id="setting-model">
             <option value="moonshot-v1-8k">moonshot-v1-8k</option>
             <option value="moonshot-v1-32k">moonshot-v1-32k</option>
@@ -154,10 +154,10 @@
           </select>
         </section>
         <section class="drawer-section">
-          <h4>API Key</h4>
+          <h4 data-i18n="settings.api_key">API Key</h4>
           <div class="apikey-input-wrap">
             <input type="password" id="setting-apikey" placeholder="sk-..." autocomplete="off">
-            <button id="btn-toggle-key" class="btn-icon-sm" title="Show/Hide">
+            <button id="btn-toggle-key" class="btn-icon-sm" title="Show/Hide" data-i18n-title="settings.show_hide">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
           </div>
@@ -169,18 +169,25 @@
           <p class="field-hint">Only applies when using Ollama</p>
         </section>
         <section class="drawer-section">
-          <h4>Interface</h4>
+          <h4 data-i18n="settings.interface">Interface</h4>
           <div class="drawer-row">
-            <span>Theme</span>
+            <span data-i18n="settings.language">Language</span>
+            <select id="setting-lang">
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+          <div class="drawer-row">
+            <span data-i18n="settings.theme">Theme</span>
             <select id="setting-theme">
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">System</option>
+              <option value="dark" data-i18n="theme.dark">Dark</option>
+              <option value="light" data-i18n="theme.light">Light</option>
+              <option value="system" data-i18n="theme.system">System</option>
             </select>
           </div>
         </section>
         <section class="drawer-section">
-          <h4>Security</h4>
+          <h4 data-i18n="settings.security">Security</h4>
           <div class="security-badges">
             <span class="sec-badge ok">AES-256</span>
             <span class="sec-badge ok">Input Sanitization</span>
@@ -188,7 +195,7 @@
           </div>
         </section>
         <section class="drawer-section">
-          <h4>Diagnostics</h4>
+          <h4 data-i18n="settings.diagnostics">Diagnostics</h4>
           <div class="diag-config-grid">
             <div class="diag-config-row">
               <label>Scheduler Interval (s)</label>
@@ -233,11 +240,11 @@
     <div class="drawer-backdrop"></div>
     <div class="drawer-panel">
       <div class="drawer-header">
-        <h3>Diagnostics</h3>
+        <h3 data-i18n="diag.title">Diagnostics</h3>
         <div class="drawer-header-actions">
           <label class="diag-autorefresh-label" title="Auto-refresh every 30s">
             <input type="checkbox" id="diag-autorefresh-toggle" checked>
-            <span>Auto-refresh</span>
+            <span data-i18n="diag.auto_refresh">Auto-refresh</span>
           </label>
           <button id="btn-close-diagnostics" class="btn-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -246,72 +253,72 @@
       </div>
       <div class="drawer-body">
         <section class="drawer-section">
-          <h4>System Health</h4>
+          <h4 data-i18n="diag.system_health">System Health</h4>
           <div class="diag-cards">
             <div class="diag-card" data-diag="health">
               <div class="diag-icon">🏥</div>
-              <div class="diag-title">Health Dashboard</div>
-              <div class="diag-desc">Backend health, metrics, security status</div>
-              <button class="btn-diag-run">Run</button>
+              <div class="diag-title" data-i18n="diag.health_dashboard">Health Dashboard</div>
+              <div class="diag-desc" data-i18n="diag.health_desc">Backend health, metrics, security status</div>
+              <button class="btn-diag-run" data-i18n="diag.run">Run</button>
             </div>
             <div class="diag-card" data-diag="connectivity">
               <div class="diag-icon">🔗</div>
-              <div class="diag-title">Connectivity Test</div>
-              <div class="diag-desc">Tool registry &amp; module import checks</div>
-              <button class="btn-diag-run">Run</button>
+              <div class="diag-title" data-i18n="diag.connectivity_test">Connectivity Test</div>
+              <div class="diag-desc" data-i18n="diag.connectivity_desc">Tool registry &amp; module import checks</div>
+              <button class="btn-diag-run" data-i18n="diag.run">Run</button>
             </div>
             <div class="diag-card" data-diag="modules">
               <div class="diag-icon">📦</div>
-              <div class="diag-title">Module Status</div>
-              <div class="diag-desc">Core module availability report</div>
-              <button class="btn-diag-run">Run</button>
+              <div class="diag-title" data-i18n="diag.module_status">Module Status</div>
+              <div class="diag-desc" data-i18n="diag.module_desc">Core module availability report</div>
+              <button class="btn-diag-run" data-i18n="diag.run">Run</button>
             </div>
           </div>
         </section>
         <section class="drawer-section">
-          <h4>Analysis</h4>
+          <h4 data-i18n="diag.analysis">Analysis</h4>
           <div class="diag-cards">
             <div class="diag-card" data-diag="audit">
               <div class="diag-icon">📋</div>
-              <div class="diag-title">Audit Viewer</div>
-              <div class="diag-desc">Security events &amp; execution traces</div>
-              <button class="btn-diag-run">Run</button>
+              <div class="diag-title" data-i18n="diag.audit_viewer">Audit Viewer</div>
+              <div class="diag-desc" data-i18n="diag.audit_desc">Security events &amp; execution traces</div>
+              <button class="btn-diag-run" data-i18n="diag.run">Run</button>
             </div>
             <div class="diag-card" data-diag="ux">
               <div class="diag-icon">✨</div>
-              <div class="diag-title">UX Advisor</div>
-              <div class="diag-desc">Configuration UX analysis</div>
-              <button class="btn-diag-run">Run</button>
+              <div class="diag-title" data-i18n="diag.ux_advisor">UX Advisor</div>
+              <div class="diag-desc" data-i18n="diag.ux_desc">Configuration UX analysis</div>
+              <button class="btn-diag-run" data-i18n="diag.run">Run</button>
             </div>
           </div>
         </section>
         <section class="drawer-section">
-          <h4>Compare</h4>
+          <h4 data-i18n="diag.compare">Compare</h4>
           <div class="diag-forms">
             <div class="diag-form" data-diag="design">
-              <div class="diag-form-title">🎨 Design Diff</div>
-              <textarea class="diag-input" id="diag-design-baseline" placeholder="Baseline design spec…" rows="3"></textarea>
-              <textarea class="diag-input" id="diag-design-current" placeholder="Current design spec…" rows="3"></textarea>
-              <button class="btn-diag-run" data-diag="design">Compare</button>
+              <div class="diag-form-title" data-i18n="diag.design_diff">🎨 Design Diff</div>
+              <textarea class="diag-input" id="diag-design-baseline" placeholder="Baseline design spec…" data-i18n-placeholder="diag.baseline_placeholder" rows="3"></textarea>
+              <textarea class="diag-input" id="diag-design-current" placeholder="Current design spec…" data-i18n-placeholder="diag.current_placeholder" rows="3"></textarea>
+              <button class="btn-diag-run" data-diag="design" data-i18n="diag.compare_btn">Compare</button>
             </div>
             <div class="diag-form" data-diag="competitor">
-              <div class="diag-form-title">🏆 Competitor Analysis</div>
-              <input type="text" class="diag-input" id="diag-competitor-name" placeholder="Competitor name">
-              <textarea class="diag-input" id="diag-competitor-ours" placeholder="Our features (one per line)…" rows="3"></textarea>
-              <textarea class="diag-input" id="diag-competitor-theirs" placeholder="Competitor features (one per line)…" rows="3"></textarea>
-              <button class="btn-diag-run" data-diag="competitor">Analyze</button>
+              <div class="diag-form-title" data-i18n="diag.competitor_analysis">🏆 Competitor Analysis</div>
+              <input type="text" class="diag-input" id="diag-competitor-name" placeholder="Competitor name" data-i18n-placeholder="diag.competitor_name">
+              <textarea class="diag-input" id="diag-competitor-ours" placeholder="Our features (one per line)…" data-i18n-placeholder="diag.ours_placeholder" rows="3"></textarea>
+              <textarea class="diag-input" id="diag-competitor-theirs" placeholder="Competitor features (one per line)…" data-i18n-placeholder="diag.theirs_placeholder" rows="3"></textarea>
+              <button class="btn-diag-run" data-diag="competitor" data-i18n="diag.analyze_btn">Analyze</button>
             </div>
           </div>
         </section>
         <section class="drawer-section">
-          <h4>Alerts</h4>
+          <h4 data-i18n="diag.alerts">Alerts</h4>
           <div class="diag-history-controls">
             <div class="diag-alert-filters">
-              <button class="diag-filter-btn active" data-alert-level="">All</button>
-              <button class="diag-filter-btn" data-alert-level="critical">Critical</button>
-              <button class="diag-filter-btn" data-alert-level="error">Error</button>
-              <button class="diag-filter-btn" data-alert-level="warning">Warning</button>
-              <button class="diag-filter-btn" data-alert-level="info">Info</button>
+              <button class="diag-filter-btn active" data-alert-level="" data-i18n="filter.all">All</button>
+              <button class="diag-filter-btn" data-alert-level="critical" data-i18n="filter.critical">Critical</button>
+              <button class="diag-filter-btn" data-alert-level="error" data-i18n="filter.error">Error</button>
+              <button class="diag-filter-btn" data-alert-level="warning" data-i18n="filter.warning">Warning</button>
+              <button class="diag-filter-btn" data-alert-level="info" data-i18n="filter.info">Info</button>
             </div>
             <select id="diag-alert-hours" class="diag-select">
               <option value="1">1h</option>
@@ -319,22 +326,22 @@
               <option value="24" selected>24h</option>
               <option value="72">3d</option>
             </select>
-            <button id="btn-load-alerts" class="btn-diag-run">Load</button>
+            <button id="btn-load-alerts" class="btn-diag-run" data-i18n="diag.load">Load</button>
           </div>
           <div id="diag-alerts-table" class="diag-history-table"></div>
         </section>
         <section class="drawer-section">
-          <h4>Export</h4>
+          <h4 data-i18n="diag.export">Export</h4>
           <div class="diag-history-controls">
             <select id="diag-export-format" class="diag-select">
-              <option value="markdown">Markdown</option>
-              <option value="json">JSON</option>
+              <option value="markdown" data-i18n="format.markdown">Markdown</option>
+              <option value="json" data-i18n="format.json">JSON</option>
             </select>
-            <button id="btn-export-report" class="btn-diag-run">Export</button>
+            <button id="btn-export-report" class="btn-diag-run" data-i18n="diag.export_btn">Export</button>
           </div>
         </section>
         <section class="drawer-section">
-          <h4>History</h4>
+          <h4 data-i18n="diag.history">History</h4>
           <div class="diag-history-controls">
             <select id="diag-history-category" class="diag-select">
               <option value="health">Health</option>
@@ -348,7 +355,7 @@
               <option value="24" selected>24h</option>
               <option value="72">3d</option>
             </select>
-            <button id="btn-load-history" class="btn-diag-run">Load</button>
+            <button id="btn-load-history" class="btn-diag-run" data-i18n="diag.load">Load</button>
           </div>
           <div id="diag-history-chart" class="diag-history-chart"></div>
           <div id="diag-history-table" class="diag-history-table"></div>
