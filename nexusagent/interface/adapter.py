@@ -1010,7 +1010,7 @@ class WebAdapter(ChannelAdapter):
         if ".." in raw or "%2e" in raw.lower():
             return web.Response(text="Forbidden", status=403)
 
-        path = request.match_info.get("tail", "") or "desktop/index.html"
+        path = request.match_info.get("tail", "") or "index.html"
         if ".." in path or path.startswith("/") or "\\" in path:
             return web.Response(text="Forbidden", status=403)
 

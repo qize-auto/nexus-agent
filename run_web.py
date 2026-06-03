@@ -55,7 +55,7 @@ async def main():
         config={
             "host": "127.0.0.1",
             "port": 8080,
-            "static_path": str(PROJECT_ROOT),
+            "static_path": str(PROJECT_ROOT / "web_ui"),
         },
         llm=_agent.current_llm if _agent else None,
     )
