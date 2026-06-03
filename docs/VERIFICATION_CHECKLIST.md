@@ -1,45 +1,45 @@
-# NexusAgent 功能验证清单
+# NexusAgent Feature Verification Checklist
 
-> 本文档记录所有已实现功能的验证方法和状态。  
-> 最后更新: 2026-06-02  
-> 测试基线: 968 passed, 3 skipped
-
----
-
-## 一、自动化测试已覆盖的功能
-
-以下功能已通过单元测试/集成测试验证，无需手动测试：
-
-| 功能 | 测试文件 | 状态 |
-|------|---------|------|
-| ReAct 引擎核心循环 | `test_react_*.py` | ✅ 968 tests |
-| 工具注册中心 | `test_tool_registry.py` | ✅ |
-| 多模型后端 (13+ Provider) | `test_batch*.py` | ✅ |
-| 安全层 (Guardrails + RBAC) | `test_security*.py` | ✅ |
-| 记忆系统 (SQLite + ChromaDB) | `test_user_profile.py`, `test_rag_integration.py` | ✅ |
-| 错误自我纠正 | `test_error_recovery.py` | ✅ |
-| 防偷懒系统 | `test_anti_compression.py`, `test_completeness.py` | ✅ |
-| StateGraph 引擎 | `test_stategraph.py` | ✅ |
-| 诊断系统 | `test_diagnostics_integration.py` | ✅ |
-| 基准测试框架 | `test_benchmark.py` | ✅ |
-| 回归测试框架 | `test_regression*.py` | ✅ |
-| 模块注册标准化 | `test_bootstrap.py`, `test_core_registry.py` | ✅ |
-| 梦境引擎 | `test_dream_engine_e2e.py` | ✅ 6 tests |
-| 自我进化系统 | `test_evolution_e2e.py` | ✅ 7 tests |
-| 5 Expert 研讨 | `test_deliberation_e2e.py` | ✅ 5 tests |
-| 严谨执行模式 | `test_mode_switch.py`, `test_intent_analyzer.py`, `test_task_decomposer.py`, `test_strict_mode.py` | ✅ 75 tests |
+> Records verification methods and status for all implemented features.
+> Last updated: 2026-06-02
+> Test baseline: 968 passed, 3 skipped
 
 ---
 
-## 二、需要手动验证的功能
+## Features Covered by Automated Tests
 
-### 2.1 Web UI / SSE 流式输出
+The following features are verified by unit/integration tests and require no manual testing:
 
-**实现位置**: `nexusagent/interface/adapter.py` — `WebAdapter._handle_stream()`
+| Feature | Test File | Status |
+|---------|-----------|--------|
+| ReAct engine core loop | `test_react_*.py` | 968 tests |
+| Tool registry | `test_tool_registry.py` | Pass |
+| Multi-model backends (13+ providers) | `test_batch*.py` | Pass |
+| Security layer (Guardrails + RBAC) | `test_security*.py` | Pass |
+| Memory system (SQLite + ChromaDB) | `test_user_profile.py`, `test_rag_integration.py` | Pass |
+| Error self-recovery | `test_error_recovery.py` | Pass |
+| Anti-laziness system | `test_anti_compression.py`, `test_completeness.py` | Pass |
+| StateGraph engine | `test_stategraph.py` | Pass |
+| Diagnostics system | `test_diagnostics_integration.py` | Pass |
+| Benchmark framework | `test_benchmark.py` | Pass |
+| Regression test framework | `test_regression*.py` | Pass |
+| Module registration standardization | `test_bootstrap.py`, `test_core_registry.py` | Pass |
+| Dream engine | `test_dream_engine_e2e.py` | 6 tests |
+| Self-evolution system | `test_evolution_e2e.py` | 7 tests |
+| 5-Expert deliberation | `test_deliberation_e2e.py` | 5 tests |
+| Strict execution mode | `test_mode_switch.py`, `test_intent_analyzer.py`, `test_task_decomposer.py`, `test_strict_mode.py` | 75 tests |
 
-**验证步骤**:
+---
 
-1. **启动 Web 服务**
+## Features Requiring Manual Verification
+
+### Web UI / SSE Streaming
+
+**Location**: `nexusagent/interface/adapter.py` — `WebAdapter._handle_stream()`
+
+**Steps**:
+
+1. **Start the web service**
    ```bash
    cd /path/to/nexusagent
    export NEXUS_MASTER_KEY=$(python -c 'import base64,os;print(base64.b64encode(os.urandom(32)).decode())')
@@ -51,130 +51,129 @@
    "
    ```
 
-2. **测试 SSE 端点**
+2. **Test SSE endpoint**
    ```bash
-   # 使用 curl 测试流式输出
-   curl -N "http://localhost:8080/api/stream?message=你好&session=test1"
+   curl -N "http://localhost:8080/api/stream?message=hello&session=test1"
    ```
-   **预期输出**: 以 `data:` 开头的 SSE 事件流，最终以 `data: [DONE]` 结束
+   **Expected**: SSE event stream starting with `data:`, ending with `data: [DONE]`
 
-3. **测试 Web UI 页面**
-   浏览器访问 `http://localhost:8080/`
-   **预期**: 能看到交互界面，发送消息后能收到回复
+3. **Test Web UI page**
+   Open browser at `http://localhost:8080/`
+   **Expected**: Interactive interface, message send/receive works
 
-4. **验证功能完整性**
-   - [ ] SSE 连接能正常建立
-   - [ ] 能收到 `event: start` 事件
-   - [ ] 能收到 `event: token` 或 `event: step` 中间事件
-   - [ ] 能收到 `event: complete` 结束事件
-   - [ ] 最后收到 `data: [DONE]`
-   - [ ] 如果 LLM backend 支持 `complete_stream`，能逐字输出
-   - [ ] 如果 LLM backend 不支持流式，能 fallback 到分段模拟输出
+4. **Verification checklist**
+   - [ ] SSE connection establishes
+   - [ ] `event: start` received
+   - [ ] `event: token` or `event: step` intermediate events received
+   - [ ] `event: complete` end event received
+   - [ ] `data: [DONE]` received at the end
+   - [ ] If LLM backend supports `complete_stream`, tokens stream one by one
+   - [ ] If LLM backend does not support streaming, fallback to simulated chunked output works
 
 ---
 
-### 2.2 Docker Compose 部署
+### Docker Compose Deployment
 
-**实现位置**: `docker-compose.yml`
+**Location**: `docker-compose.yml`
 
-**验证步骤**:
+**Steps**:
 
-1. **检查文件存在**
+1. **Check file exists**
    ```bash
    ls docker-compose.yml
    ```
 
-2. **构建镜像**
+2. **Build image**
    ```bash
    docker-compose build
    ```
-   **预期**: 构建成功，无错误
+   **Expected**: Build succeeds with no errors
 
-3. **启动服务**
+3. **Start services**
    ```bash
    docker-compose up -d
    ```
-   **预期**: 容器正常启动
+   **Expected**: Containers start normally
 
-4. **健康检查**
+4. **Health check**
    ```bash
    curl http://localhost:8080/api/health
    ```
-   **预期**: 返回 JSON `{"status": "healthy"}`
+   **Expected**: Returns JSON `{"status": "healthy"}`
 
-5. **发送测试消息**
+5. **Send test message**
    ```bash
    curl -X POST http://localhost:8080/api/message \
      -H "Content-Type: application/json" \
-     -d '{"message": "你好", "session_id": "test"}'
+     -d '{"message": "hello", "session_id": "test"}'
    ```
-   **预期**: 返回 JSON 包含 `content` 字段
+   **Expected**: Returns JSON with `content` field
 
-6. **停止服务**
+6. **Stop services**
    ```bash
    docker-compose down
    ```
 
 ---
 
-### 2.3 多通道适配器 (Telegram / Discord / 飞书)
+### Multi-Channel Adapters (Telegram / Discord / Feishu)
 
-**实现位置**: `nexusagent/interface/multi_channel.py`
+**Location**: `nexusagent/interface/multi_channel.py`
 
-**验证前提**: 需要真实的 Bot Token / Webhook URL
+**Prerequisite**: Real Bot Token / Webhook URL required
 
-**验证步骤**:
+**Steps**:
 
 #### Telegram
-1. 在 `@BotFather` 创建 bot，获取 token
-2. 配置 `config.yaml`:
+1. Create bot via `@BotFather`, get token
+2. Configure `config.yaml`:
    ```yaml
    channels:
      enabled_channels: ["telegram"]
      telegram:
        token: "your-token"
    ```
-3. 启动 Agent
-4. 在 Telegram 中向 bot 发送消息
-5. **预期**: bot 能回复消息
+3. Start agent
+4. Send message to bot in Telegram
+5. **Expected**: Bot replies
 
 #### Discord
-1. 在 Discord Developer Portal 创建 bot，获取 token
-2. 配置 `config.yaml`
-3. 启动 Agent
-4. 在 Discord 中 @bot 发送消息
-5. **预期**: bot 能回复消息
+1. Create bot in Discord Developer Portal, get token
+2. Configure `config.yaml`
+3. Start agent
+4. @bot in Discord and send message
+5. **Expected**: Bot replies
 
-#### 飞书
-1. 在飞书开放平台创建机器人，获取 webhook_url
-2. 配置 `config.yaml`
-3. 启动 Agent
-4. 在飞书中 @机器人 发送消息
-5. **预期**: 机器人能回复消息
+#### Feishu
+1. Create robot in Feishu Open Platform, get webhook_url
+2. Configure `config.yaml`
+3. Start agent
+4. @robot in Feishu and send message
+5. **Expected**: Robot replies
 
 ---
 
-### 2.4 MCP Server
+### MCP Server
 
-**实现位置**: `nexusagent/tools/mcp_server.py`
+**Location**: `nexusagent/tools/mcp_server.py`
 
-**验证步骤**:
+**Steps**:
 
 ```bash
-# 启动 MCP Server
+# Start MCP Server
 python -m nexusagent.cli.main mcp
 
-# 在另一个终端测试（使用 mcp-cli 或类似工具）
-# 预期: 能看到 NexusAgent 的工具列表
+# Test from another terminal (using mcp-cli or similar)
+# Expected: NexusAgent tool list visible
 ```
 
 ---
 
-## 三、已知限制
+## Known Limitations
 
-| 限制 | 说明 | 计划 |
-|------|------|------|
-| 严谨模式澄清循环 | 当前遇到模糊需求时直接返回澄清提示，不走多轮 StateGraph 循环 | 后续版本实现真正的交互式澄清 |
-| Web UI 手动验证 | 已通过代码审查确认 SSE 逻辑正确，但未在实际浏览器中验证 | 按本清单 2.1 步骤验证 |
-| Docker 部署 | 已通过代码审查确认 compose 文件语法正确，但未实际构建运行 | 按本清单 2.2 步骤验证 |
-| 外部通道 | 需要真实的 API token，无法在自动化测试中验证 | 按本清单 2.3 步骤手动验证 |
+| Limitation | Description | Plan |
+|------------|-------------|------|
+| Strict mode clarification loop | Currently returns clarification prompt directly instead of multi-round StateGraph loop | Interactive clarification in future version |
+| Web UI manual verification | SSE logic verified by code review but not tested in real browser | Verify via Section 2.1 steps |
+| Docker deployment | Compose file syntax verified but not actually built and run | Verify via Section 2.2 steps |
+| External channels | Requires real API tokens, cannot be tested in automation | Verify via Section 2.3 steps |
