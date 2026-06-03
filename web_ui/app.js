@@ -121,7 +121,18 @@
       'settings.saved': 'Config saved',
       'settings.save_failed': 'Save failed',
       'avatar.user': 'Me',
-      'alert.dismiss': 'Dismiss',
+'alert.dismiss': 'Dismiss',
+      // Document Editor
+      'sidebar.documents': 'Documents',
+      'doc_editor.title': 'Documents',
+      'doc_editor.new': 'New',
+      'doc_editor.edit': 'Edit',
+      'doc_editor.preview': 'Preview',
+      'doc_editor.ai_assist': '✨ Ask AI',
+      'doc_editor.download': 'Download',
+      'doc_editor.placeholder': 'Write Markdown here...',
+      'doc_editor.untitled': 'Untitled',
+      'doc_editor.confirm_delete': 'Delete this document?',
     },
     zh: {
       'sidebar.new_chat': '新对话',
@@ -223,7 +234,18 @@
       'settings.saved': '配置已保存并生效',
       'settings.save_failed': '保存失败',
       'avatar.user': '我',
-      'alert.dismiss': '关闭',
+'alert.dismiss': '关闭',
+      // 文档编辑器
+      'sidebar.documents': '文档',
+      'doc_editor.title': '文档',
+      'doc_editor.new': '新建',
+      'doc_editor.edit': '编辑',
+      'doc_editor.preview': '预览',
+      'doc_editor.ai_assist': '✨ 问 AI',
+      'doc_editor.download': '下载',
+      'doc_editor.placeholder': '在此输入 Markdown...',
+      'doc_editor.untitled': '未命名',
+      'doc_editor.confirm_delete': '删除此文档？',
     }
   };
 
@@ -297,6 +319,12 @@
   let pyqtBridgeReady = false;
   let wsConnection = null;
 
+  // Document editor state
+  const STORAGE_DOCS = 'nexus_docs_v1';
+  let docs = [];
+  let activeDocId = null;
+  let isDocDrawerOpen = false;
+
   // ═══════════════════════════════════════════════
   // DOM 快捷引用
   // ═══════════════════════════════════════════════
@@ -311,6 +339,7 @@
   function init() {
     initLang();
     initTheme();
+    initDocs();
     initPyQtBridge();
     loadSessions();
     ensureWelcomeSession();
@@ -1757,6 +1786,21 @@
       });
     }
 
+    // Documents drawer
+    $('#btn-documents').addEventListener('click', openDocumentsDrawer);
+    $('#btn-close-documents').addEventListener('click', closeDocumentsDrawer);
+    $('#documents-drawer .drawer-backdrop').addEventListener('click', closeDocumentsDrawer);
+    $('#btn-new-doc').addEventListener('click', createNewDocument);
+    const docEditor = $('#doc-editor');
+    if (docEditor) {
+      docEditor.addEventListener('input', () => {
+        updateActiveDocContent(docEditor.value);
+        renderDocPreview();
+      });
+    }
+    $('#btn-ai-assist').addEventListener('click', aiAssistDocument);
+    $('#btn-doc-download').addEventListener('click', downloadActiveDoc);
+
     // 窗口控制（Electron）
     if (window.nexusDesktop && window.nexusDesktop.send) {
       // 已预留
@@ -1766,6 +1810,176 @@
   // ═══════════════════════════════════════════════
   // 启动
   // ═══════════════════════════════════════════════
+
+
+  // ═══════════════════════════════════════════════
+  // Document Editor
+  // ═══════════════════════════════════════════════
+
+  function initDocs() {
+    try {
+      const raw = localStorage.getItem(STORAGE_DOCS);
+      if (raw) docs = JSON.parse(raw);
+    } catch (e) { docs = []; }
+    if (!Array.isArray(docs)) docs = [];
+    if (docs.length === 0) {
+      docs = [{ id: 'doc_' + Date.now(), title: t('doc_editor.untitled'), content: '', updatedAt: Date.now() }];
+      saveDocs();
+    }
+    activeDocId = docs[0].id;
+  }
+
+  function saveDocs() {
+    try {
+      localStorage.setItem(STORAGE_DOCS, JSON.stringify(docs));
+    } catch (e) { console.error('saveDocs failed:', e); }
+  }
+
+  function openDocumentsDrawer() {
+    $('#documents-drawer').classList.remove('hidden');
+    isDocDrawerOpen = true;
+    renderDocTabs();
+    loadActiveDoc();
+  }
+
+  function closeDocumentsDrawer() {
+    $('#documents-drawer').classList.add('hidden');
+    isDocDrawerOpen = false;
+  }
+
+  function createNewDocument() {
+    const id = 'doc_' + Date.now();
+    const doc = { id, title: t('doc_editor.untitled'), content: '', updatedAt: Date.now() };
+    docs.push(doc);
+    activeDocId = id;
+    saveDocs();
+    renderDocTabs();
+    loadActiveDoc();
+  }
+
+  function deleteDocument(id) {
+    if (!confirm(t('doc_editor.confirm_delete'))) return;
+    docs = docs.filter(d => d.id !== id);
+    if (docs.length === 0) {
+      createNewDocument();
+      return;
+    }
+    if (activeDocId === id) activeDocId = docs[0].id;
+    saveDocs();
+    renderDocTabs();
+    loadActiveDoc();
+  }
+
+  function switchDocument(id) {
+    // Save current before switching
+    const editor = $('#doc-editor');
+    if (editor) updateActiveDocContent(editor.value);
+    activeDocId = id;
+    renderDocTabs();
+    loadActiveDoc();
+  }
+
+  function updateActiveDocContent(text) {
+    const doc = docs.find(d => d.id === activeDocId);
+    if (!doc) return;
+    doc.content = text;
+    doc.updatedAt = Date.now();
+    // Auto-rename from first heading
+    const m = text.match(/^#\s+(.+)$/m);
+    if (m && (doc.title === t('doc_editor.untitled') || doc.title.startsWith(t('doc_editor.untitled')))) {
+      doc.title = m[1].trim().slice(0, 30);
+    }
+    saveDocs();
+  }
+
+  function renderDocTabs() {
+    const container = $('#doc-tabs');
+    if (!container) return;
+    container.innerHTML = '';
+    docs.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '');
+      el.innerHTML = `<span>${escapeHtml(d.title)}</span><span class="doc-tab-close" title="Delete">×</span>`;
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('doc-tab-close')) {
+          e.stopPropagation();
+          deleteDocument(d.id);
+        } else {
+          switchDocument(d.id);
+        }
+      });
+      container.appendChild(el);
+    });
+  }
+
+  function loadActiveDoc() {
+    const doc = docs.find(d => d.id === activeDocId);
+    const editor = $('#doc-editor');
+    if (!editor || !doc) return;
+    editor.value = doc.content;
+    renderDocPreview();
+  }
+
+  function renderDocPreview() {
+    const editor = $('#doc-editor');
+    const preview = $('#doc-preview');
+    if (!editor || !preview) return;
+    preview.innerHTML = renderMarkdown(editor.value);
+  }
+
+  async function aiAssistDocument() {
+    const editor = $('#doc-editor');
+    if (!editor) return;
+    const selected = editor.value.substring(editor.selectionStart, editor.selectionEnd);
+    const fullText = editor.value;
+    let promptText = '';
+    if (selected) {
+      promptText = 'Rewrite, improve, or continue the following text. Only return the improved text, no explanations.\n\n' + selected;
+    } else if (fullText) {
+      promptText = 'Continue the following text naturally. Only return the continuation, no explanations.\n\n' + fullText.slice(-500);
+    } else {
+      promptText = 'Write a short introduction. Only return the text, no explanations.';
+    }
+
+    const btn = $('#btn-ai-assist');
+    const original = btn ? btn.textContent : 'AI';
+    if (btn) btn.textContent = '...';
+
+    try {
+      const res = await fetch(API_BASE + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: promptText, session: 'doc_ai_' + Date.now() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        let aiText = data.response || '';
+        // Strip markdown code fences if present
+        aiText = aiText.replace(/^```\w*\n?/, '').replace(/\n?```$/, '').trim();
+        if (selected) {
+          const start = editor.selectionStart;
+          const end = editor.selectionEnd;
+          editor.value = editor.value.substring(0, start) + aiText + editor.value.substring(end);
+          editor.selectionStart = editor.selectionEnd = start + aiText.length;
+        } else {
+          editor.value += (editor.value && !editor.value.endsWith('\n\n') ? '\n\n' : '') + aiText;
+        }
+        updateActiveDocContent(editor.value);
+        renderDocPreview();
+      }
+    } catch (e) {
+      showAlertToast('error', 'AI Assist', e.message || 'Failed');
+    } finally {
+      if (btn) btn.textContent = original;
+    }
+  }
+
+  function downloadActiveDoc() {
+    const doc = docs.find(d => d.id === activeDocId);
+    if (!doc) return;
+    const filename = (doc.title || 'untitled').replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_') + '.md';
+    downloadFile(filename, doc.content, 'text/markdown');
+  }
 
   document.addEventListener('DOMContentLoaded', init);
 })();
