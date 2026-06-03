@@ -26,7 +26,7 @@ class TestSearchResult:
     def test_to_markdown_empty(self):
         result = SearchResult(query="xyz123notfound", items=[], total=0)
         md = result.to_markdown()
-        assert "未找到" in md
+        assert "No results found" in md
         assert "xyz123notfound" in md
 
     def test_to_markdown_error(self):
@@ -69,7 +69,7 @@ class TestSearXNGTool:
         tool = SearXNGTool()
         result = await tool.search("")
         assert result.error is not None
-        assert "不能为空" in result.error
+        assert "cannot be empty" in result.error
 
     @pytest.mark.asyncio
     async def test_invoke_returns_markdown(self):
@@ -83,4 +83,4 @@ class TestSearXNGTool:
         tool = SearXNGTool(host="http://localhost:59999")
         result = await tool.search("test query")
         assert result.error is not None
-        assert "无法连接" in result.error or "Failed" in result.error or "Connection" in result.error
+        assert "Cannot connect" in result.error or "Failed" in result.error or "Connection" in result.error

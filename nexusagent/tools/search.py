@@ -1,8 +1,8 @@
 """
-NexusAgent v4.0+ — SearXNG 聚合搜索工具
+NexusAgent v4.0+ — SearXNG Aggregated Search Tool
 
-本地优先的搜索能力，无需商业搜索 API Key。
-依赖: SearXNG 实例（可通过 Docker 本地运行）
+Local-first search capability, no commercial search API key required.
+Dependency: SearXNG instance (can run locally via Docker)
 
 Usage:
     tool = SearXNGTool()
@@ -22,7 +22,7 @@ logger = logging.getLogger("nexus.tools.search")
 
 @dataclass
 class SearchResultItem:
-    """单条搜索结果"""
+    """Single search result"""
     title: str
     url: str
     content: str = ""
@@ -32,25 +32,25 @@ class SearchResultItem:
 
 @dataclass
 class SearchResult:
-    """搜索结果集合"""
+    """Collection of search results"""
     query: str
     items: List[SearchResultItem] = field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
 
     def to_markdown(self, max_items: int = 10) -> str:
-        """转换为 Markdown 格式供 LLM 阅读"""
+        """Convert to Markdown format for LLM consumption"""
         if self.error:
-            return f"搜索出错: {self.error}"
+            return f"Search error: {self.error}"
         if not self.items:
-            return f"未找到与「{self.query}」相关的结果。"
-        lines = [f"## 搜索结果: {self.query}", ""]
+            return f"No results found for \"{self.query}\"."
+        lines = [f"## Search Results: {self.query}", ""]
         for i, item in enumerate(self.items[:max_items], 1):
             lines.append(f"{i}. **{item.title}**")
-            lines.append(f"   - 链接: {item.url}")
+            lines.append(f"   - URL: {item.url}")
             if item.content:
                 snippet = item.content.replace("\n", " ")[:300]
-                lines.append(f"   - 摘要: {snippet}")
+                lines.append(f"   - Snippet: {snippet}")
             lines.append("")
         return "\n".join(lines)
 
@@ -74,10 +74,10 @@ class SearchResult:
 
 class SearXNGTool:
     """
-    SearXNG 聚合搜索工具
+    SearXNG Aggregated Search Tool
 
-    配置:
-        SEARXNG_HOST — SearXNG 实例地址（默认 http://localhost:8081）
+    Config:
+        SEARXNG_HOST — SearXNG instance URL (default http://localhost:8081)
     """
 
     def __init__(self, host: Optional[str] = None):
@@ -87,27 +87,27 @@ class SearXNGTool:
         self,
         query: str,
         categories: str = "general",
-        language: str = "zh-CN",
+        language: str = "en-US",
         max_results: int = 10,
     ) -> SearchResult:
         """
-        执行搜索查询
+        Execute a search query
 
         Args:
-            query: 搜索关键词
-            categories: 搜索分类 (general/images/news/science/it)
-            language: 语言代码
-            max_results: 最大返回条数
+            query: Search keywords
+            categories: Search category (general/images/news/science/it)
+            language: Language code
+            max_results: Maximum results to return
         """
         if not query or not query.strip():
-            return SearchResult(query="", error="搜索关键词不能为空")
+            return SearchResult(query="", error="Search query cannot be empty")
 
         try:
             import aiohttp
         except ImportError:
             return SearchResult(
                 query=query,
-                error="aiohttp 未安装，无法执行网络搜索。请安装: pip install aiohttp",
+                error="aiohttp is not installed. Install it: pip install aiohttp",
             )
 
         params = {
@@ -123,21 +123,21 @@ class SearXNGTool:
                 async with session.get(f"{self._host}/search", params=params) as resp:
                     if resp.status != 200:
                         text = await resp.text()
-                        logger.warning("SearXNG 返回非 200: %s %s", resp.status, text[:200])
+                        logger.warning("SearXNG returned non-200: %s %s", resp.status, text[:200])
                         return SearchResult(
                             query=query,
-                            error=f"SearXNG 返回 HTTP {resp.status}。请检查 SearXNG 服务是否运行 ({self._host})",
+                            error=f"SearXNG returned HTTP {resp.status}. Check if SearXNG is running ({self._host})",
                         )
                     data = await resp.json()
         except aiohttp.ClientConnectorError as e:
-            logger.warning("无法连接 SearXNG: %s", e)
+            logger.warning("Cannot connect to SearXNG: %s", e)
             return SearchResult(
                 query=query,
-                error=f"无法连接 SearXNG ({self._host})。请确认服务已启动: docker compose up searxng",
+                error=f"Cannot connect to SearXNG ({self._host}). Ensure the service is running: docker compose up searxng",
             )
         except Exception as e:
-            logger.warning("SearXNG 查询失败: %s", e)
-            return SearchResult(query=query, error=f"搜索请求失败: {e}")
+            logger.warning("SearXNG query failed: %s", e)
+            return SearchResult(query=query, error=f"Search request failed: {e}")
 
         items: List[SearchResultItem] = []
         for raw in data.get("results", [])[:max_results]:
@@ -157,10 +157,10 @@ class SearXNGTool:
             total=data.get("number_of_results", len(items)),
         )
 
-    # ── ToolSpec 兼容 ──
+    # ── ToolSpec compatibility ──
 
-    async def invoke(self, query: str, categories: str = "general", language: str = "zh-CN", max_results: int = 10) -> str:
-        """供 ToolRegistry 调用的统一接口，返回 Markdown 文本"""
+    async def invoke(self, query: str, categories: str = "general", language: str = "en-US", max_results: int = 10) -> str:
+        """Unified interface for ToolRegistry, returns Markdown text"""
         result = await self.search(query, categories, language, max_results)
         return result.to_markdown()
 
@@ -168,31 +168,32 @@ class SearXNGTool:
         return {
             "name": "search.web",
             "description": (
-                "使用 SearXNG 聚合搜索引擎查询网络信息。"
-                "支持普通网页、图片、新闻、IT技术等多种分类。"
-                "当用户询问实时信息、新闻、技术文档、事实核查时优先使用此工具。"
+                "Use SearXNG aggregated search engine to query web information. "
+                "Supports general web pages, images, news, IT tech, and more. "
+                "Prioritize this tool when the user asks about real-time info, news, "
+                "technical docs, or fact-checking."
             ),
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "搜索关键词",
+                        "description": "Search keywords",
                     },
                     "categories": {
                         "type": "string",
                         "default": "general",
-                        "description": "搜索分类: general(通用), images(图片), news(新闻), science(科学), it(IT技术)",
+                        "description": "Category: general, images, news, science, it",
                     },
                     "language": {
                         "type": "string",
-                        "default": "zh-CN",
-                        "description": "语言代码，如 zh-CN, en-US",
+                        "default": "en-US",
+                        "description": "Language code, e.g. en-US, zh-CN",
                     },
                     "max_results": {
                         "type": "integer",
                         "default": 10,
-                        "description": "最大返回结果数 (1-20)",
+                        "description": "Max results (1-20)",
                     },
                 },
                 "required": ["query"],
